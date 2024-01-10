@@ -1,6 +1,7 @@
 from pathlib import Path
 from itertools import chain
 from logging import Logger, INFO
+from tqdm.auto import tqdm
 import os
 
 from langchain.text_splitter import TokenTextSplitter, TextSplitter
@@ -52,7 +53,7 @@ class DocumentLoader:
                 abs_file_path=str(file_path_obj.absolute()),
                 file_extension=file_path_obj.suffix,
             )
-            for file_path_obj in document_dict.values()
+            for file_path_obj in tqdm(document_dict.values(), desc="load documents")
         ]
         return loaders
 
@@ -64,7 +65,7 @@ class DocumentLoader:
             itertools.chain: An iterator that chains the document iterators from all loaders.
 
         """
-        return chain(*[loader.lazy_load() for loader in self.loaders])
+        return chain(*[loader.lazy_load() for loader in tqdm(self.loaders, desc="chain document iterators")])
 
     def load_token_text_splitter(self) -> TextSplitter:
         """

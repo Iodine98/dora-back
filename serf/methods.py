@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import tempfile
 from logging import INFO
+from tqdm.auto import tqdm
 
 from flask import Flask
 from werkzeug.datastructures import FileStorage
@@ -34,7 +35,7 @@ class ServerMethods:
         dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
         os.makedirs(dir_path, exist_ok=True)
         full_document_dict: dict[str, Path] = {}
-        for filename, file in files.items():
+        for filename, file in tqdm(files.items(), desc="Saving files"):
             unique_file_name = Utils.get_unique_filename(filename)
             unique_file_path = dir_path / Path(unique_file_name)
             full_document_dict[unique_file_name] = unique_file_path
@@ -52,10 +53,10 @@ class ServerMethods:
         Returns:
             None
         """
-        loader_factory = DocumentLoaderFactory()
-        document_loader = DocumentLoader(document_dict, loader_factory, self.app.logger)
         embedding_fn = EmbeddingFactory().create()
         vector_db = VectorDatabase(user_id, embedding_fn)
+        loader_factory = DocumentLoaderFactory()
+        document_loader = DocumentLoader(document_dict, loader_factory, self.app.logger)
         documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
         self.app.logger.log(level=INFO, msg="Adding documents to vector database...")
         await vector_db.add_documents(documents)
