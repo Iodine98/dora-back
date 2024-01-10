@@ -162,5 +162,6 @@ cython_debug/
 #.idea/
 test-files/
 embeddings/
+models/*
 *.pdf
 azure_chat_models.json
