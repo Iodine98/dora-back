@@ -164,3 +164,4 @@ test-files/
 embeddings/
 *.pdf
 azure_chat_models.json
+/models/*
