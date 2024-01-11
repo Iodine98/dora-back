@@ -1,5 +1,5 @@
 from .session_state_helper import SessionStateHelper
-from .endpoints import Endpoints
+from .endpoints import Endpoints, Result
 from typing import Any
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
@@ -38,7 +38,9 @@ class AppLayout:
             )
             if uploaded_files and isinstance(uploaded_files, list):
                 Endpoints.upload_files(uploaded_files, session_id=self.session_state_helper.sessionId)
-            st.sidebar.button("Verwijder chatgeschiedenis", on_click=self.session_state_helper.clear_chat_history)
+            st.sidebar.button("Verwijder chatgeschiedenis", 
+                              on_click=self.session_state_helper.clear_chat_history,
+                              disabled=self.session_state_helper.is_clear)
 
     def init_chat_input(self):
         if question := st.text_input("Stel een vraag"):
@@ -55,33 +57,32 @@ class AppLayout:
             placeholder.markdown(full_answer + "▌")
             time.sleep(0.1)
         return placeholder, full_answer
+    
+
+    def prepare_answer(self, answer: str, citations: list[dict[str, str]], source_documents: Any, start_time: float):
+        placeholder, full_answer = self.build_placeholder(answer)
+        end = default_timer()
+        time_elapsed = end - start_time
+        self.session_state_helper.add_bot_message(answer, citations, source_documents, time_elapsed)
+        self.show_result(placeholder, full_answer, citations, source_documents, time_elapsed)
 
     def send_prompt_on_last_message(self):
         last_message = self.session_state_helper.get_last_message()
-        if last_message is None or self.equals_init_message(last_message):
-            return
-        match last_message["role"]:
-            case "user":
-                pass
-            case "bot":
-                with st.chat_message("bot"):
-                    with st.spinner("Thinking...:thinking:"):
-                        if "content" in last_message and last_message["content"] is not None:
-                            start = default_timer()
-                            result = Endpoints.prompt(last_message["content"])
-                            if result is None:
-                                st.error("Er ging iets mis bij het versturen van de vraag.")
-                                return
-                            answer, citations, source_documents = result
-                            placeholder, full_answer = self.build_placeholder(answer)
-                            end = default_timer()
-                            time_elapsed = end - start
-                            self.session_state_helper.add_bot_message(answer, citations, source_documents, time_elapsed)
-                            self.show_result(placeholder, full_answer, citations, source_documents, time_elapsed)
-
-            case x:
-                raise NotImplementedError(f"Message role {str(x)} has not been implemented.")
-
+        if last_message is None or \
+            self.equals_init_message(last_message) or \
+            last_message["role"] != "bot" or \
+            "content" not in last_message or \
+            last_message["content"] is None:
+                return
+        with st.chat_message("bot"):
+            with st.spinner("Thinking...:thinking:"):
+                start = default_timer()
+                result: Result | None = Endpoints.prompt(last_message["content"])
+                if result is None:
+                    st.error("Er ging iets mis bij het versturen van de vraag.")
+                    return
+                self.prepare_answer(*result, start)
+        
     def get_sources(self, sources: Any) -> None:
         for i, source in enumerate(sources):
             with st.expander(f"Bron {i+1}"):
@@ -89,18 +90,7 @@ class AppLayout:
                 st.markdown(f'Brontekst: {source["source_text"]}')
                 if "page" in source.metadata:
                     st.markdown(f'Pagina: {source.metadata["page"] + 1}\n')
-                if st.button("Bekijk document"):
-                    try:
-                        st.markdown(
-                            """
-                            <script>
-                                    window.open(arguments[0], "_blank");
-                            </script>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                    except Exception as e:
-                        st.error(e)
+                st.download_button("Bekijk document", source)
 
     def show_result(
         self, container: DeltaGenerator, answer: str, citations: list[dict[str, str]], sources: Any, time: float
