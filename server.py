@@ -68,11 +68,16 @@ def add_cors_headers(response: Response) -> Response:
     Returns:
         Response: The response object with CORS headers added.
     """
+    current_host_port = "127.0.0.1:5000"
     origin = request.headers.get("Origin")
-    if origin is None:
-        response_message = ResponseMessage(message="", error="No origin header found")
-        return make_response(response_message, 400)
-    response.headers["Access-Control-Allow-Origin"] = origin
+    host = request.headers.get("Host")
+    if host != current_host_port:
+        if origin is not None:
+            response_message = ResponseMessage(message="", error="No origin header found")
+            return make_response(response_message, 400)
+    if host == current_host_port:
+        origin = host
+    response.headers["Access-Control-Allow-Origin"] = str(origin)
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
@@ -122,13 +127,39 @@ def upload_files() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
 
-    if "sessionId" not in session:
-        return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
-    prefix: str = request.form["prefix"]
-    files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
-    full_document_dict = sm_app.save_files(files, session["sessionId"])
+    def get_session_id() -> str:
+        if "sessionId" in session:
+            return str(session["sessionId"])
+        elif "sessionId" in request.form:
+            return str(request.form["sessionId"])
+        elif "sessionId" in request.files:
+            return str(request.files["sessionId"])
+        else:
+            raise ValueError("No sessionId found in session or request.form")
+
+    def get_prefix() -> str:
+        if "prefix" in request.form:
+            return str(request.form["prefix"])
+        elif "prefix" in request.files:
+            return str(request.files["prefix"])
+        else:
+            raise ValueError("No prefix found in request.form or request.files")
+
+    def get_files() -> dict:
+        if "prefix" in request.form:
+            return  {k.lstrip(prefix): v for k, v in request.form.items() if k.startswith(prefix)}
+        elif "prefix" in request.files:
+            return  {k.lstrip(prefix): v for k, v in request.form.items() if k.startswith(prefix)}
+        else:
+            raise ValueError("No files found in request.form or request.files")
+
+    session_id: str = get_session_id()
+    prefix: str = get_prefix()
+    files = get_files()
+    print(files.keys())
+    full_document_dict = sm_app.save_files(files, session_id=session_id)
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(sm_app.process_files(full_document_dict, session["sessionId"]))
+    loop.run_until_complete(sm_app.process_files(full_document_dict, user_id=session_id))
     loop.close()
     session["files"] = {file_name: str(file_path) for file_name, file_path in full_document_dict.items()}
     response_message = ResponseMessage(
@@ -162,4 +193,4 @@ def prompt() -> Response:
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(port=5000)

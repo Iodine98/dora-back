@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Streamlit",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": [
+                "run",
+                "./st_app.py"
+            ],
+            "justMyCode": true
+        },
+        {
             "name": "Python: Module Chatdoc",
             "type": "python",
             "request": "launch",
