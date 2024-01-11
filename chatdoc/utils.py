@@ -43,7 +43,7 @@ class Utils:
         current_date: str = date.today().strftime("%Y-%m-%d")
         secure_file_name = secure_filename(raw_filename)
         secure_path = Path(secure_file_name)
-        return f"{secure_path.stem}_{current_date}_{secure_path.suffix}"
+        return f"{secure_path.stem}_{current_date}{secure_path.suffix}"
 
     @staticmethod
     def remove_date_from_filename(filename: str) -> str:
