@@ -5,6 +5,7 @@ from langchain_core.pydantic_v1 import SecretStr
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from .utils import Utils
+from .local_llm import build_llm
 
 
 class ChatModel:
@@ -47,6 +48,15 @@ class ChatModel:
                     raise ValueError("Invalid Azure ML chat model name")
                 chat_model_url = azure_chat_models[self.chat_model_name]
                 return AzureMLChatOnlineEndpoint(endpoint_api_key=SecretStr(self.api_key), endpoint_url=chat_model_url)
+            case "local":
+                model_path = f"./models/{self.chat_model_name}"
+                return build_llm(
+                    model_path=model_path,
+                    length=128, # TODO: Change this to env variable
+                    temp=0,
+                    gpu_layers=50, # TODO: Change this to env variable
+                    chat_box=None # TODO: Change this to env variable
+                )
             case _:
                 raise ValueError("Invalid vendor name")
 

@@ -182,7 +182,7 @@ def prompt() -> Response:
     message = request.form["prompt"]
     chatbot = Chatbot(
         user_id=session_id,
-        document_dict=session["files"],
+        # document_dict=session["files"],
     )
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)

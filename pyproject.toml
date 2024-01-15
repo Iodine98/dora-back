@@ -23,6 +23,7 @@ langchain-core = "^0.1.4"
 streamlit = "^1.29.0"
 extra-streamlit-components = "^0.1.60"
 streamlit-cookies-manager = "^0.2.0"
+llama-cpp-python = "0.2.11"
 
 
 
