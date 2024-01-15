@@ -85,6 +85,7 @@ class FileHelper:
                 continue
             unique_file_names.add(file.name)
             unique_files.append(file)
+        st.session_state.filenames = unique_file_names
         st.session_state.file_states = [
             {"name": file.name, "file": file, "is_uploaded": self.has_file_been_uploaded(file.name)} for file in unique_files
         ]

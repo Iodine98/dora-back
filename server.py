@@ -116,6 +116,15 @@ def identify() -> Response:
     response = make_response(identify_response, 200)
     return response
 
+def get_session_id() -> str:
+        if "sessionId" in session:
+            return str(session["sessionId"])
+        elif "sessionId" in request.form:
+            return str(request.form["sessionId"])
+        else:
+            raise ValueError("No sessionId found in session or request.form")
+
+
 
 @app.route("/upload_files", methods=["POST"])
 def upload_files() -> Response:
@@ -127,13 +136,13 @@ def upload_files() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
 
-    def get_session_id() -> str:
-        if "sessionId" in session:
-            return str(session["sessionId"])
-        elif "sessionId" in request.form:
-            return str(request.form["sessionId"])
-        else:
-            raise ValueError("No sessionId found in session or request.form")
+    # def get_session_id() -> str:
+    #     if "sessionId" in session:
+    #         return str(session["sessionId"])
+    #     elif "sessionId" in request.form:
+    #         return str(request.form["sessionId"])
+    #     else:
+    #         raise ValueError("No sessionId found in session or request.form")
 
     def get_prefix() -> str:
         if "prefix" in request.form:
@@ -167,13 +176,12 @@ def prompt() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    if "sessionId" not in session:
-        return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
+    session_id = get_session_id()
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
     chatbot = Chatbot(
-        user_id=session["sessionId"],
+        user_id=session_id,
         document_dict=session["files"],
     )
     prompt_response = PromptResponse(

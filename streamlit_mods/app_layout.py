@@ -60,7 +60,7 @@ class AppLayout:
                               disabled=self.message_helper.is_clear)
 
     def init_chat_input(self):
-        if question := st.text_input("Stel een vraag"):
+        if question := st.text_input("Stel een vraag", self.session_state_helper.text_input_available):
             self.message_helper.add_user_message(question)
             with st.chat_message("user"):
                 st.write(question)
@@ -91,7 +91,7 @@ class AppLayout:
         with st.chat_message("bot"):
             with st.spinner("Thinking...:thinking:"):
                 start = default_timer()
-                result: Result | None = Endpoints.prompt(last_message["content"])
+                result: Result | None = Endpoints.prompt(self.session_state_helper.cookie_manager, last_message["content"], self.session_state_helper.sessionId)
                 if result is None:
                     self.session_state_helper.text_input_available = True
                     st.error("Er ging iets mis bij het versturen van de vraag.")

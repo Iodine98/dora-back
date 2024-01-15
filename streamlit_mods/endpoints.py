@@ -52,11 +52,13 @@ class Endpoints:
     
 
     @staticmethod
-    def prompt(cookie_manager: CookieManager, text_prompt: str) -> Result | None:
+    def prompt(cookie_manager: CookieManager, text_prompt: str, session_id: str | None = None) -> Result | None:
         if not cookie_manager.ready():
             st.stop()
         try:
-            response = requests.post("http://127.0.0.1:5000/prompt", data={"prompt": text_prompt})
+            session_id_dict = {"sessionId": session_id} if session_id is not None else {}
+            response = requests.post("http://127.0.0.1:5000/prompt", data={"prompt": text_prompt, 
+                                                                          **session_id_dict })
             json_response = response.json()
             if json_response["error"] != "":
                 st.error(json_response["error"], icon="❌")
