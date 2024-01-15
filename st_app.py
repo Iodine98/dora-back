@@ -8,6 +8,7 @@ def main():
         app_layout.identify()
     app_layout.initialize_sidebar()
     app_layout.initialize_main()
+    
 
 
 if __name__ == "__main__":

@@ -2,13 +2,14 @@ import requests
 from typing import Any
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+from streamlit_cookies_manager import CookieManager
 
 
 Result = tuple[str, list[dict[str, str]], Any]
 
 class Endpoints:
     @staticmethod
-    def identify() -> dict[str, Any] | None:
+    def identify(cookie_manager: CookieManager) -> dict[str, Any] | None:
         try:
             response = requests.get("http://127.0.0.1:5000/identify")
             json_response = response.json()
@@ -16,13 +17,16 @@ class Endpoints:
                 st.error(json_response["error"])
                 return
             response_message = json_response["message"]
+            cookie_manager["sessionId"] = json_response["sessionId"]
             st.toast(response_message, icon="🤗")
             return json_response
         except Exception as err:
             st.error(err, icon="❌")
 
     @staticmethod
-    def upload_files(uploaded_files: list[UploadedFile], session_id: str | None = None) -> None:
+    def upload_files(cookie_manager: CookieManager, uploaded_files: list[UploadedFile], session_id: str | None = None) -> bool:
+        if not cookie_manager.ready():
+            st.stop()
         prefix = "file_"
         prefix_filename = lambda name: prefix + name
         files_with_prefix = {prefix_filename(file.name): (file.name, file.read(), file.type) for file in uploaded_files}
@@ -38,15 +42,19 @@ class Endpoints:
                                      files=files_with_prefix)
             json_response = response.json()
             if json_response["error"] != "":
-                st.error(json_response["error"], icon="❌")
-                return
+                raise Exception(json_response["error"])
             response_message = json_response["message"]
             st.toast(response_message, icon="✅")
+            return True
         except Exception as err:
             st.error(err, icon="❌")
+        return False
+    
 
     @staticmethod
-    def prompt(text_prompt: str) -> Result | None:
+    def prompt(cookie_manager: CookieManager, text_prompt: str) -> Result | None:
+        if not cookie_manager.ready():
+            st.stop()
         try:
             response = requests.post("http://127.0.0.1:5000/prompt", data={"prompt": text_prompt})
             json_response = response.json()

@@ -10,24 +10,41 @@ class AppLayout:
     def __init__(self, session_state_helper: SessionStateHelper) -> None:
         st.title("DoRA (Documenten Raadplegen Assistent)")
         self.session_state_helper = session_state_helper
+        self.message_helper = session_state_helper.message_helper
+        self.file_helper = session_state_helper.file_helper
         self.init_message_content = "Hallo, ik ben DoRA. Wat kan ik voor je doen?"
 
     def equals_init_message(self, message: dict[str, Any]) -> bool:
         return message["content"] == self.init_message_content
+    
+    def is_message_prompt(self, message: dict[str, Any]) -> bool:
+        """
+        Validating if a message counts as a user prompt.
+        Only if:
+        1) The role of the message (i.e. the sender) is 'user'
+        2) 'content' exists as an attribute of message
+        3) The message content is a string
+        4) The message content is not empty
+        """
+        return message is not None \
+            and message["role"] == "user" \
+            and "content" in message \
+            and isinstance(message["content"], str) \
+            and message["content"] != ""
 
     def identify(self):
-        json_response: dict[str, Any] | None = Endpoints.identify()
+        json_response: dict[str, Any] | None = Endpoints.identify(self.session_state_helper.cookie_manager)
         if json_response is None:
             return
         self.session_state_helper.authenticated = json_response["authenticated"]
         self.session_state_helper.sessionId = json_response["sessionId"]
 
     def show_initial_message(self):
-        if self.session_state_helper.authenticated:
-            return
-        with st.chat_message("bot"):
-            st.write(self.init_message_content)
-        self.session_state_helper.add_bot_message(self.init_message_content, [], [], 0)
+        last_message = self.message_helper.get_last_message() 
+        if last_message is None or not self.equals_init_message(last_message):
+            with st.chat_message("bot"):
+                st.write(self.init_message_content)
+            self.message_helper.add_bot_message(self.init_message_content, [], [], 0)
 
     def initialize_sidebar(self):
         with st.sidebar:
@@ -37,14 +54,14 @@ class AppLayout:
                 accept_multiple_files=True,
             )
             if uploaded_files and isinstance(uploaded_files, list):
-                Endpoints.upload_files(uploaded_files, session_id=self.session_state_helper.sessionId)
+                self.file_helper.save_files(uploaded_files)
             st.sidebar.button("Verwijder chatgeschiedenis", 
-                              on_click=self.session_state_helper.clear_chat_history,
-                              disabled=self.session_state_helper.is_clear)
+                              on_click=self.message_helper.clear_chat_history,
+                              disabled=self.message_helper.is_clear)
 
     def init_chat_input(self):
         if question := st.text_input("Stel een vraag"):
-            self.session_state_helper.add_user_message(question)
+            self.message_helper.add_user_message(question)
             with st.chat_message("user"):
                 st.write(question)
 
@@ -63,26 +80,27 @@ class AppLayout:
         placeholder, full_answer = self.build_placeholder(answer)
         end = default_timer()
         time_elapsed = end - start_time
-        self.session_state_helper.add_bot_message(answer, citations, source_documents, time_elapsed)
+        self.message_helper.add_bot_message(answer, citations, source_documents, time_elapsed)
         self.show_result(placeholder, full_answer, citations, source_documents, time_elapsed)
 
     def send_prompt_on_last_message(self):
-        last_message = self.session_state_helper.get_last_message()
-        if last_message is None or \
-            self.equals_init_message(last_message) or \
-            last_message["role"] != "bot" or \
-            "content" not in last_message or \
-            last_message["content"] is None:
+        last_message = self.message_helper.get_last_message()
+        if last_message is None or not self.is_message_prompt(last_message):
                 return
+        self.text_input_available = False
         with st.chat_message("bot"):
             with st.spinner("Thinking...:thinking:"):
                 start = default_timer()
                 result: Result | None = Endpoints.prompt(last_message["content"])
                 if result is None:
+                    self.session_state_helper.text_input_available = True
                     st.error("Er ging iets mis bij het versturen van de vraag.")
                     return
                 self.prepare_answer(*result, start)
-        
+
+    def upload_remaining_files(self):
+        self.file_helper.upload_files()
+
     def get_sources(self, sources: Any) -> None:
         for i, source in enumerate(sources):
             with st.expander(f"Bron {i+1}"):
@@ -100,8 +118,12 @@ class AppLayout:
             self.get_sources(sources)
         time_str = f"{round((time)/60)} minutes" if time > 100 else f"{round(time)} seconds"
         st.write(f":orange[Time to retrieve response: {time_str}]")
+        self.session_state_helper.text_input_available = True
 
     def initialize_main(self):
+        if not self.session_state_helper.authenticated:
+            return
         self.show_initial_message()
         self.init_chat_input()
+        self.upload_remaining_files()
         self.send_prompt_on_last_message()
