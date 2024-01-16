@@ -13,6 +13,15 @@ class BaseCitation:
     This class represents a citation for a source in a document. It contains information about the source and the page number where the citation is found.
     """
 
+    def __dict__(self):
+        """
+        Return the citation as a dictionary.
+
+        Returns:
+            dict: The citation as a dictionary.
+        """
+        return {"source": self.source, "page": self.page, "text": self.format_citation_text()}
+
     source: str
     page: int
 
@@ -31,6 +40,15 @@ class ProofCitation(BaseCitation):
     """
     A base citation with proof
     """
+
+    def __dict__(self):
+        """
+        Return the citation as a dictionary.
+
+        Returns:
+            dict: The citation as a dictionary.
+        """
+        return {**super().__dict__(), "proof": self.proof,"text": self.format_citation_text()}
 
     proof: str
 
@@ -64,7 +82,7 @@ class Citations:
         Returns:
             dict: The citations as a dictionary.
         """
-        return {"citations": list(self.citations), "with_proof": self.with_proof}
+        return {"citations": [citation.__dict__() for citation in self.citations], "with_proof": self.with_proof}
 
     def add_citation(self, source: str, page: int, proof: str):
         """

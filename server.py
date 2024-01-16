@@ -41,6 +41,28 @@ match current_env:
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
 
+def get_property(property_name: str, with_error=True) -> str | None:
+    """
+    Gets a property from the request object.
+
+    Args:
+        property_name (str): The name of the property to get from the request object.
+
+    Raises:
+        ValueError: If the property is not found in the request object.
+
+    Returns:
+        str: The property value.
+    """
+    if property_name in session:
+        return str(session[property_name])
+    elif property_name in request.form:
+        return str(request.form[property_name])
+    else:
+        if with_error:
+            raise ValueError(f"No {property_name} found in request.form or session")
+        return None
+
 
 @app.errorhandler(ValueError)  # type: ignore
 def handle_value_error(error: ValueError) -> Response:
@@ -105,24 +127,19 @@ def identify() -> Response:
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
-    identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
-    if "sessionId" in session and isinstance(session["sessionId"], str):
-        identity = Identity(sessionId=session["sessionId"], authenticated=True, hasDB=session["hasDB"])
+    if (session_id := get_property("sessionId", with_error=False)) and isinstance(session_id, str):
+        identity = Identity(sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False)))
         identify_response = IdentifyResponse(
-            message=f"Welcome back user: {session['sessionId']} !", error="", **identity
+            message=f"Welcome back user: {session_id} !", error="", **identity
         )
+    else:
+        identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
+        identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
+    
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
 
-def get_session_id() -> str:
-        if "sessionId" in session:
-            return str(session["sessionId"])
-        elif "sessionId" in request.form:
-            return str(request.form["sessionId"])
-        else:
-            raise ValueError("No sessionId found in session or request.form")
 
 
 
@@ -136,14 +153,6 @@ def upload_files() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
 
-    # def get_session_id() -> str:
-    #     if "sessionId" in session:
-    #         return str(session["sessionId"])
-    #     elif "sessionId" in request.form:
-    #         return str(request.form["sessionId"])
-    #     else:
-    #         raise ValueError("No sessionId found in session or request.form")
-
     def get_prefix() -> str:
         if "prefix" in request.form:
             return str(request.form["prefix"])
@@ -153,7 +162,7 @@ def upload_files() -> Response:
     def get_files() -> dict:
         return  {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
 
-    session_id: str = get_session_id()
+    session_id: str = str(get_property("sessionId"))
     prefix: str = get_prefix()
     files = get_files()
     full_document_dict = sm_app.save_files(files, session_id=session_id)
@@ -176,7 +185,7 @@ def prompt() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    session_id = get_session_id()
+    session_id = str(get_property("sessionId"))
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]

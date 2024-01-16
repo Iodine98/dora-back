@@ -59,6 +59,7 @@ class VectorDatabase:
             collection_name=collection_name,
             client=self.chroma_client,
             embedding_function=embedding_fn,
+            persist_directory="./chroma_db"
         )
         self.search_kwargs = self.load_search_kwargs()
         self.retriever = self.chroma_instance.as_retriever(**self.search_kwargs)
@@ -104,3 +105,4 @@ class VectorDatabase:
             None
         """
         await self.chroma_instance.aadd_documents(documents)
+        self.chroma_instance.persist()

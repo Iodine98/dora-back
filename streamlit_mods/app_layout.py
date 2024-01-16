@@ -4,6 +4,7 @@ from typing import Any
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from timeit import default_timer
+from pathlib import Path
 import time
 
 class AppLayout:
@@ -33,7 +34,7 @@ class AppLayout:
             and message["content"] != ""
 
     def identify(self):
-        json_response: dict[str, Any] | None = Endpoints.identify(self.session_state_helper.cookie_manager)
+        json_response: dict[str, Any] | None = Endpoints.identify(self.session_state_helper.cookie_manager, session_id=self.session_state_helper.sessionId)
         if json_response is None:
             return
         self.session_state_helper.authenticated = json_response["authenticated"]
@@ -60,7 +61,7 @@ class AppLayout:
                               disabled=self.message_helper.is_clear)
 
     def init_chat_input(self):
-        if question := st.text_input("Stel een vraag", self.session_state_helper.text_input_available):
+        if question := st.text_input("Stel een vraag", disabled=self.session_state_helper.text_input_available):
             self.message_helper.add_user_message(question)
             with st.chat_message("user"):
                 st.write(question)
@@ -87,9 +88,9 @@ class AppLayout:
         last_message = self.message_helper.get_last_message()
         if last_message is None or not self.is_message_prompt(last_message):
                 return
-        self.text_input_available = False
+        self.session_state_helper.text_input_available = False
         with st.chat_message("bot"):
-            with st.spinner("Thinking...:thinking:"):
+            with st.spinner("Thinking..."):
                 start = default_timer()
                 result: Result | None = Endpoints.prompt(self.session_state_helper.cookie_manager, last_message["content"], self.session_state_helper.sessionId)
                 if result is None:
@@ -100,29 +101,28 @@ class AppLayout:
 
     def upload_remaining_files(self):
         self.file_helper.upload_files()
-
-    def get_sources(self, sources: Any) -> None:
-        for i, source in enumerate(sources):
-            with st.expander(f"Bron {i+1}"):
-                st.markdown(f'Document naam: {source["document_name"]}')
-                st.markdown(f'Brontekst: {source["source_text"]}')
-                if "page" in source.metadata:
-                    st.markdown(f'Pagina: {source.metadata["page"] + 1}\n')
-                st.download_button("Bekijk document", source)
+        
+    def get_citations(self, citations: list[dict[str, str]]) -> None:
+        for i, citation in enumerate(citations):
+            with st.expander(f"Citatie {i+1}"):
+                st.markdown(f'Bron: {citation["source"]}')
+                st.markdown(f'Pagina: {citation["page"]}')
 
     def show_result(
         self, container: DeltaGenerator, answer: str, citations: list[dict[str, str]], sources: Any, time: float
     ) -> None:
         container.markdown(answer)
-        if sources:
-            self.get_sources(sources)
+        # if sources:
+        #     self.get_sources(sources)
+        if citations:
+            self.get_citations(citations)
         time_str = f"{round((time)/60)} minutes" if time > 100 else f"{round(time)} seconds"
         st.write(f":orange[Time to retrieve response: {time_str}]")
         self.session_state_helper.text_input_available = True
 
     def initialize_main(self):
         if not self.session_state_helper.authenticated:
-            return
+            st.stop()
         self.show_initial_message()
         self.init_chat_input()
         self.upload_remaining_files()

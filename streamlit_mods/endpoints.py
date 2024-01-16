@@ -9,9 +9,10 @@ Result = tuple[str, list[dict[str, str]], Any]
 
 class Endpoints:
     @staticmethod
-    def identify(cookie_manager: CookieManager) -> dict[str, Any] | None:
+    def identify(cookie_manager: CookieManager, session_id: str | None = None) -> dict[str, Any] | None:
         try:
-            response = requests.get("http://127.0.0.1:5000/identify")
+            session_id_entry = {"sessionId": session_id} if session_id else {}
+            response = requests.get("http://127.0.0.1:5000/identify", data={**session_id_entry})
             json_response = response.json()
             if json_response["error"] != "":
                 st.error(json_response["error"])
@@ -64,7 +65,7 @@ class Endpoints:
                 st.error(json_response["error"], icon="❌")
                 return None
             result = json_response["result"]
-            citations = result["citations"]
+            citations = result["citations"]["citations"]
             source_docs = result["source_documents"]
             answer = result["answer"]
             return answer, citations, source_docs

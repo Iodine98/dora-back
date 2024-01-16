@@ -43,4 +43,7 @@ class Chatbot:
         citations: Citations = Citations(set(), False)
         citations.get_unique_citations(result["source_documents"])
         self.chat_history.append((prompt, result["answer"], citations))
+        result["chat_history"] = [message.dict() for message in result["chat_history"]]
+        result["source_documents"] = [source_document.dict() for source_document in result["source_documents"]]
+        result["citations"] = citations.__dict__()
         return result
