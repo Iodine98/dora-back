@@ -18,7 +18,7 @@ class SessionStateHelper:
     def text_input_available(self) -> bool:
         if "text_input_available" in st.session_state:
             return st.session_state.text_input_available
-        return False
+        return True
     
     @text_input_available.setter
     def text_input_available(self, value: bool) -> None:
@@ -27,7 +27,7 @@ class SessionStateHelper:
     @property
     def sessionId(self) -> str:
         if "sessionId" in st.session_state:
-            return "23564715-1e8d-45a5-8861-a88cd36886bd" # st.session_state.sessionId
+            return st.session_state.sessionId
         return ""
 
     @sessionId.setter

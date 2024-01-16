@@ -3,6 +3,7 @@ from .endpoints import Endpoints, Result
 from typing import Any
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 from timeit import default_timer
 from pathlib import Path
 import time
@@ -47,21 +48,49 @@ class AppLayout:
                 st.write(self.init_message_content)
             self.message_helper.add_bot_message(self.init_message_content, [], [], 0)
 
-    def initialize_sidebar(self):
-        with st.sidebar:
-            uploaded_files = st.sidebar.file_uploader(
-                "Upload een of meerdere documenten",
-                type=["pdf", "docx", "doc", "txt"],
-                accept_multiple_files=True,
+    def initialize_file_uploader(self) -> list[UploadedFile] | None:
+        if uploaded_files := st.file_uploader(
+            "Upload een of meerdere documenten",
+            type=["pdf", "docx", "doc", "txt"],
+            accept_multiple_files=True,
+        ):
+            self.file_helper.save_files(uploaded_files)
+            return uploaded_files
+        return None
+    
+    def initialize_file_downloader(self, files: list[UploadedFile] | None):
+        if files is None:
+            return
+        for file in files:
+            file_path = Path(file.name)
+            file_name = file_path.name
+            file_bytes = file.getvalue()
+            st.download_button(
+                label=f"Download {file_name}",
+                data=file_bytes,
+                file_name=file_name,
+                mime="application/octet-stream",
             )
-            if uploaded_files and isinstance(uploaded_files, list):
-                self.file_helper.save_files(uploaded_files)
+        
+
+    def initialize_sidebar(self):
+        if not self.session_state_helper.authenticated:
+            st.stop()
+        self.file_helper.upload_files()
+        with st.sidebar:
+            files = self.initialize_file_uploader()
+            self.initialize_file_downloader(files)
             st.sidebar.button("Verwijder chatgeschiedenis", 
                               on_click=self.message_helper.clear_chat_history,
                               disabled=self.message_helper.is_clear)
+        
+        
+
 
     def init_chat_input(self):
-        if question := st.text_input("Stel een vraag", disabled=self.session_state_helper.text_input_available):
+        if question := st.text_input("Stel een vraag",
+                                     key="chat_input"):
+            
             self.message_helper.add_user_message(question)
             with st.chat_message("user"):
                 st.write(question)
@@ -88,42 +117,37 @@ class AppLayout:
         last_message = self.message_helper.get_last_message()
         if last_message is None or not self.is_message_prompt(last_message):
                 return
-        self.session_state_helper.text_input_available = False
         with st.chat_message("bot"):
             with st.spinner("Thinking..."):
                 start = default_timer()
                 result: Result | None = Endpoints.prompt(self.session_state_helper.cookie_manager, last_message["content"], self.session_state_helper.sessionId)
                 if result is None:
-                    self.session_state_helper.text_input_available = True
                     st.error("Er ging iets mis bij het versturen van de vraag.")
                     return
                 self.prepare_answer(*result, start)
-
-    def upload_remaining_files(self):
-        self.file_helper.upload_files()
+        
         
     def get_citations(self, citations: list[dict[str, str]]) -> None:
         for i, citation in enumerate(citations):
-            with st.expander(f"Citatie {i+1}"):
-                st.markdown(f'Bron: {citation["source"]}')
+            with st.expander(f"Bron {i+1}"):
+                st.markdown(f'Bestand: {citation["source"]}')
                 st.markdown(f'Pagina: {citation["page"]}')
+                st.markdown(f'Citaat: \"{citation["proof"]}\"')
 
     def show_result(
         self, container: DeltaGenerator, answer: str, citations: list[dict[str, str]], sources: Any, time: float
     ) -> None:
         container.markdown(answer)
-        # if sources:
-        #     self.get_sources(sources)
         if citations:
             self.get_citations(citations)
         time_str = f"{round((time)/60)} minutes" if time > 100 else f"{round(time)} seconds"
         st.write(f":orange[Time to retrieve response: {time_str}]")
-        self.session_state_helper.text_input_available = True
 
     def initialize_main(self):
         if not self.session_state_helper.authenticated:
             st.stop()
         self.show_initial_message()
         self.init_chat_input()
-        self.upload_remaining_files()
         self.send_prompt_on_last_message()
+        
+        

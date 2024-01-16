@@ -40,7 +40,7 @@ class Chatbot:
         Method to send a prompt to the chatbot
         """
         result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages :]})
-        citations: Citations = Citations(set(), False)
+        citations: Citations = Citations(set(), True)
         citations.get_unique_citations(result["source_documents"])
         self.chat_history.append((prompt, result["answer"], citations))
         result["chat_history"] = [message.dict() for message in result["chat_history"]]
