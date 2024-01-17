@@ -1,7 +1,8 @@
 # system imports
 import uuid
 import os
-import asyncio
+import json
+from typing import Any, cast
 
 
 import logging
@@ -41,8 +42,11 @@ match current_env:
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
 
+Basic = str | int | float | bool
+Property = Basic | dict | tuple | list
 
-def get_property(property_name: str, with_error=True) -> str | None:
+
+def get_property(property_name: str, with_error=True, property_type: type[Property] = str) -> Any:
     """
     Gets a property from the request object.
 
@@ -55,14 +59,18 @@ def get_property(property_name: str, with_error=True) -> str | None:
     Returns:
         str: The property value.
     """
+    property_value: str
     if property_name in session:
-        return str(session[property_name])
+        property_value = session[property_name]
     elif property_name in request.form:
-        return str(request.form[property_name])
+        property_value = request.form[property_name]
+    elif with_error:
+        raise ValueError(f"No {property_name} found in request.form or session")
     else:
-        if with_error:
-            raise ValueError(f"No {property_name} found in request.form or session")
-        return None
+        return cast(property_type, None)
+    if issubclass(property_type, Basic):
+        return cast(property_type, property_value)
+    return json.loads(property_value)
 
 
 @app.errorhandler(Exception)
@@ -130,7 +138,9 @@ def identify() -> Response:
     """
     if (session_id := get_property("sessionId", with_error=False)) and isinstance(session_id, str):
         identity = Identity(
-            sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False))
+            sessionId=session_id,
+            authenticated=True,
+            hasDB=bool(get_property("hasDB", with_error=False, property_type=bool)),
         )
         identify_response = IdentifyResponse(message=f"Welcome back user: {session_id} !", error="", **identity)
     else:
@@ -167,12 +177,15 @@ async def upload_files() -> Response:
     prefix: str = get_prefix()
     files = get_files()
 
-    full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
-    file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    external_file_id_mapping = {
+        original_names_dict[filename]: document_ids for filename, document_ids in internal_file_id_mapping.items()
+    }
     response_message = UploadResponse(
         message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!",
         error="",
-        file_id_mapping=file_id_mapping,
+        file_id_mapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
@@ -189,8 +202,8 @@ async def delete_file() -> Response:
     """
     session_id = str(get_property("sessionId"))
     file_name = str(get_property("file_name"))
-    document_ids = str(get_property("document_ids"))
-    deletion_successful = sm_app.delete_file_from_vector_db(file_name, session_id=session_id)
+    document_ids = get_property("document_ids", property_type=list)
+    deletion_successful = sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
     message, error = "", ""
     if deletion_successful:
         message = f"File {file_name} deleted successfully!"

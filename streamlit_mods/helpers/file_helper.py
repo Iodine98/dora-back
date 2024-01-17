@@ -9,6 +9,17 @@ class FileHelper:
         self.cookie_manager = cookie_manager
         st.session_state.file_states = self.file_states
         st.session_state.filenames = self.filenames
+        st.session_state.file_id_mapping = self.file_id_mapping
+
+    @property
+    def file_id_mapping(self) -> dict[str, list[str]]:
+        if "file_id_mapping" in st.session_state:
+            return st.session_state.file_id_mapping
+        return {}
+
+    @file_id_mapping.setter
+    def file_id_mapping(self, value: dict[str, list[str]]) -> None:
+        st.session_state.file_id_mapping = value
 
     @property
     def filenames(self) -> set[str]:
@@ -62,4 +73,19 @@ class FileHelper:
             if result:
                 for file_state in unuploaded_file_states:
                     self.update_file_is_uploaded(file_state["name"], True)
-                st.session_state.file_id_mapping = result
+                self.file_id_mapping = result
+
+    def delete_file(self, filename: str) -> None:
+        result = Endpoints.delete_file(
+            self.cookie_manager, filename, self.file_id_mapping[filename], st.session_state.sessionId
+        )
+        if result:
+            st.session_state.filenames.remove(filename)
+            st.session_state.file_states = [
+                file_state for file_state in st.session_state.file_states if file_state["name"] != filename
+            ]
+            st.session_state.file_id_mapping = {
+                filename: document_ids
+                for filename, document_ids in st.session_state.file_id_mapping.items()
+                if filename != filename
+            }

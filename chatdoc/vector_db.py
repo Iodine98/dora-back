@@ -109,18 +109,18 @@ class VectorDatabase:
         self.chroma_instance.persist()
         return document_ids
 
-    async def delete_document(self, document_id: str) -> bool:
+    async def delete_documents(self, document_ids: list[str]) -> bool:
         """
         Delete a document from the vector database.
 
         Args:
-            document_id (str):
-                The ID of the document to be deleted.
+            document_ids (str):
+                A list of document IDs to be deleted
 
         Returns:
             None
         """
-        deletion_successful = bool(await self.chroma_instance.adelete([document_id]))
+        deletion_successful = bool(await self.chroma_instance.adelete(document_ids))
         if deletion_successful:
             self.chroma_instance.persist()
         return deletion_successful

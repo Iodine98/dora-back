@@ -1,3 +1,4 @@
+import json
 import requests
 from typing import Any
 import streamlit as st
@@ -51,14 +52,32 @@ class Endpoints:
         except Exception as err:
             st.error(err, icon="❌")
         return {}
-    
+
     @staticmethod
-    def delete_file( cookie_manager: CookieManager, file_name: str, session_id: str | None = None) -> bool:
+    def delete_file(
+        cookie_manager: CookieManager, file_name: str, document_ids: list[str], session_id: str | None = None
+    ) -> bool:
         if not cookie_manager.ready():
             st.stop()
         try:
             session_id_entry = {"sessionId": session_id} if session_id else {}
-            response = requests.delete("http://127.0.0.1:5000/
+            response = requests.delete(
+                "http://127.0.0.1:5000/delete_file",
+                data={
+                    "file_name": file_name,
+                    "document_ids": json.dumps(document_ids),
+                    **session_id_entry,
+                },
+            )
+            json_response = response.json()
+            if json_response["error"] != "":
+                raise Exception(json_response["error"])
+            response_message = json_response["message"]
+            st.toast(response_message, icon="✅")
+            return True
+        except Exception as err:
+            st.error(err, icon="❌")
+        return False
 
     @staticmethod
     def prompt(cookie_manager: CookieManager, text_prompt: str, session_id: str | None = None) -> Result | None:
@@ -77,4 +96,4 @@ class Endpoints:
             answer = result["answer"]
             return answer, citations, source_docs
         except Exception as err:
-            st.error(err)
+            st.error(err, icon="❌")

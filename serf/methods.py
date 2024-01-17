@@ -22,7 +22,12 @@ class ServerMethods:
     def __init__(self, app: Flask):
         self.app = app
 
-    async def save_files_to_tmp(self, files: dict[str, FileStorage], session_id: str) -> dict[str, Path]:
+    FileToPathMapping = dict[str, Path]
+    OriginalFileMapping = dict[str, str]
+
+    async def save_files_to_tmp(
+        self, files: dict[str, FileStorage], session_id: str
+    ) -> tuple[OriginalFileMapping, FileToPathMapping]:
         """
         Save the files to a temporary directory.
 
@@ -31,17 +36,19 @@ class ServerMethods:
             session_id (str): The ID of the session.
 
         Returns:
-            dict[str, Path]: A dictionary mapping the unique filenames to their corresponding file paths.
+            A tuple containing the original file names and the full file paths.
         """
         dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
         os.makedirs(dir_path, exist_ok=True)
+        original_name_dict: dict[str, str] = {}
         full_document_dict: dict[str, Path] = {}
         for filename, file in tqdm(files.items(), desc="Saving files"):
             unique_file_name = Utils.get_unique_filename(filename)
+            original_name_dict[unique_file_name] = filename
             unique_file_path = dir_path / Path(unique_file_name)
             full_document_dict[unique_file_name] = unique_file_path
             file.save(unique_file_path)
-        return full_document_dict
+        return original_name_dict, full_document_dict
 
     async def save_files_to_vector_db(self, file_dict: dict[str, Path], user_id: str) -> dict[str, list[str]]:
         """
@@ -66,12 +73,12 @@ class ServerMethods:
             file_id_mapping[filename] = document_ids
         return file_id_mapping
 
-    async def delete_file_from_vector_db(self, file_name: str, session_id: str) -> bool:
+    async def delete_docs_from_vector_db(self, document_ids: list[str], session_id: str) -> bool:
         """
         Delete the file with the given name from the temporary directory.
 
         Args:
-            file_name (str): The name of the file to be deleted.
+            document_ids (list[str]): A list of document IDs to be deleted.
             session_id (str): The ID of the session.
 
         Returns:
@@ -79,5 +86,5 @@ class ServerMethods:
         """
         embedding_fn = EmbeddingFactory().create()
         vector_db = VectorDatabase(session_id, embedding_fn)
-        deletion_successful = await vector_db.delete_document(file_name)
+        deletion_successful = await vector_db.delete_documents(document_ids)
         return deletion_successful
