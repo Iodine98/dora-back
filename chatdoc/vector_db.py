@@ -120,7 +120,9 @@ class VectorDatabase:
         Returns:
             None
         """
-        deletion_successful = bool(await self.chroma_instance.adelete(document_ids))
-        if deletion_successful:
+        try:
+            self.chroma_instance.delete(document_ids)
             self.chroma_instance.persist()
-        return deletion_successful
+        except Exception as ChromaError:
+            raise Exception(f"Error deleting document: {ChromaError}")
+        return True

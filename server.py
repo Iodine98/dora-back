@@ -203,7 +203,7 @@ async def delete_file() -> Response:
     session_id = str(get_property("sessionId"))
     file_name = str(get_property("filename"))
     document_ids = get_property("documentIds", property_type=list)
-    deletion_successful = sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
+    deletion_successful = await sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
     message, error = "", ""
     if deletion_successful:
         message = f"File {file_name} deleted successfully!"

@@ -45,7 +45,7 @@
                 "--no-reload"
             ],
             "jinja": false,
-            "justMyCode": true
+            "justMyCode": false
         }
     ]
 }
