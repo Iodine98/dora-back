@@ -29,11 +29,8 @@ class Sidebar:
             "Upload een of meerdere documenten",
             type=["pdf", "docx", "doc", "txt"],
             accept_multiple_files=True,
-            key=self.session_state_helper.file_uploader_key,
-            on_change=self.on_file_remove,
         ):
             self.file_helper.save_files(uploaded_files)
-            self.file_helper.upload_files()
             return uploaded_files
         return None
 
@@ -50,13 +47,3 @@ class Sidebar:
                 file_name=file_name,
                 mime="application/octet-stream",
             )
-
-    def on_file_remove(self) -> None:
-        new_files: list[UploadedFile] = st.session_state[self.session_state_helper.file_uploader_key]
-        new_file_names = set(file.name for file in new_files)
-        old_file_names = self.file_helper.filenames
-        removed_file_names = old_file_names - new_file_names
-        if removed_file_names:
-            for removed_file_name in removed_file_names:
-                self.file_helper.delete_file(removed_file_name)
-            self.file_helper.filenames = new_file_names
