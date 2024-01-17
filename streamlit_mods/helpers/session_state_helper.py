@@ -1,8 +1,8 @@
 from typing import Any
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
-from streamlit_mods.file_helper import FileHelper
-from streamlit_mods.message_helper import MessageHelper
+from streamlit_mods.helpers.file_helper import FileHelper
+from streamlit_mods.helpers.message_helper import MessageHelper
 
 
 class SessionStateHelper:
@@ -13,13 +13,13 @@ class SessionStateHelper:
         self.cookie_manager = CookieManager()
         self.message_helper = MessageHelper(self.cookie_manager)
         self.file_helper = FileHelper(self.cookie_manager)
-    
+
     @property
     def text_input_available(self) -> bool:
         if "text_input_available" in st.session_state:
             return st.session_state.text_input_available
         return True
-    
+
     @text_input_available.setter
     def text_input_available(self, value: bool) -> None:
         st.session_state.text_input_available = value

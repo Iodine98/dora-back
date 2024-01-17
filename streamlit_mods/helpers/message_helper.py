@@ -29,6 +29,24 @@ class MessageHelper:
     def add_user_message(self, content: str) -> None:
         st.session_state.messages.append({"role": "user", "content": content})
 
+
+    @staticmethod
+    def is_message_prompt(message: dict[str, Any]) -> bool:
+        """
+        Validating if a message counts as a user prompt.
+        Only if:
+        1) The role of the message (i.e. the sender) is 'user'
+        2) 'content' exists as an attribute of message
+        3) The message content is a string
+        4) The message content is not empty
+        """
+        return message is not None \
+            and message["role"] == "user" \
+            and "content" in message \
+            and isinstance(message["content"], str) \
+            and message["content"] != ""
+
+
     def clear_chat_history(self) -> None:
         st.session_state.is_clear = True
         st.session_state.messages = []
