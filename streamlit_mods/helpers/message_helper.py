@@ -2,8 +2,6 @@ import streamlit as st
 from typing import Any
 from streamlit_cookies_manager import CookieManager
 
-from streamlit_mods.endpoints import Endpoints
-
 
 class MessageHelper:
     def __init__(self, cookie_manager: CookieManager) -> None:
@@ -54,9 +52,3 @@ class MessageHelper:
             and isinstance(message["content"], str)
             and message["content"] != ""
         )
-
-    def clear_chat_history(self, session_id: str | None = None) -> None:
-        result = Endpoints.clear_chat_history(self.cookie_manager, session_id)
-        if result:
-            self.messages = []
-            st.session_state.initialized = False

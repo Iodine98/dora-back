@@ -88,7 +88,7 @@ class FileHelper:
         if result:
             self.file_states = [file_state for file_state in self.file_states if file_state["name"] != filename]
             self.file_id_mapping = {
-                filename: document_ids
-                for filename, document_ids in self.file_id_mapping.items()
-                if filename != filename
+                current_filename: document_ids
+                for current_filename, document_ids in self.file_id_mapping.items()
+                if current_filename != filename
             }

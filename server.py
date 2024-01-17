@@ -1,4 +1,5 @@
 # system imports
+import time
 import uuid
 import os
 import json
@@ -181,13 +182,14 @@ async def upload_files() -> Response:
 
     original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
     internal_file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    time.sleep(1)
     external_file_id_mapping = {
         original_names_dict[filename]: document_ids for filename, document_ids in internal_file_id_mapping.items()
     }
     response_message = UploadResponse(
         message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
         error="",
-        file_id_mapping=external_file_id_mapping,
+        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
@@ -246,7 +248,7 @@ def clear_chat_history() -> Response:
     session_id = str(get_property("sessionId"))
     memory_db = SQLChatMessageHistory(session_id, "sqlite:///chat_history.db")
     memory_db.clear()
-    response_message = ResponseMessage(message="Chat history succesvol gewist!", error="")
+    response_message = ResponseMessage(message="Chatgeschiedenis succesvol gewist!", error="")
     return make_response(response_message, 200)
 
 

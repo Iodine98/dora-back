@@ -48,7 +48,7 @@ class Endpoints:
                 raise Exception(json_response["error"])
             response_message = json_response["message"]
             st.toast(response_message, icon="✅")
-            return json_response["file_id_mapping"]
+            return json_response["fileIdMapping"]
         except Exception as err:
             st.error(err, icon="❌")
         return {}

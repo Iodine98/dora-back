@@ -40,7 +40,7 @@ class UploadResponse(ResponseMessage):
     Represents a response for uploading files.
     """
 
-    file_id_mapping: dict[str, list[str]]
+    fileIdMapping: dict[str, list[str]]
 
 
 class PromptResponse(ResponseMessage):
