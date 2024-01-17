@@ -59,7 +59,7 @@ class VectorDatabase:
             collection_name=collection_name,
             client=self.chroma_client,
             embedding_function=embedding_fn,
-            persist_directory="./chroma_db"
+            persist_directory="./chroma_db",
         )
         self.search_kwargs = self.load_search_kwargs()
         self.retriever = self.chroma_instance.as_retriever(**self.search_kwargs)
@@ -93,7 +93,7 @@ class VectorDatabase:
         self.search_kwargs = search_kwargs
         self.retriever = self.chroma_instance.as_retriever(search_kwargs=search_kwargs)
 
-    async def add_documents(self, documents: list[Document]) -> None:
+    async def add_documents(self, documents: list[Document]) -> list[str]:
         """
         Add multiple documents to the vector database.
 
@@ -102,7 +102,25 @@ class VectorDatabase:
                 A list of Document objects to be added when this endpoint is called from `server.py`.
 
         Returns:
+            document_ids (list[str]):
+                A list of document IDs for the documents that were added.
+        """
+        document_ids: list[str] = await self.chroma_instance.aadd_documents(documents)
+        self.chroma_instance.persist()
+        return document_ids
+
+    async def delete_document(self, document_id: str) -> bool:
+        """
+        Delete a document from the vector database.
+
+        Args:
+            document_id (str):
+                The ID of the document to be deleted.
+
+        Returns:
             None
         """
-        await self.chroma_instance.aadd_documents(documents)
-        self.chroma_instance.persist()
+        deletion_successful = bool(await self.chroma_instance.adelete([document_id]))
+        if deletion_successful:
+            self.chroma_instance.persist()
+        return deletion_successful

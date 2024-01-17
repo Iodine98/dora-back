@@ -13,7 +13,7 @@ from flask_cors import CORS
 
 # local imports
 from serf.methods import ServerMethods
-from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
+from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse
 from chatdoc.chatbot import Chatbot
 
 
@@ -41,6 +41,7 @@ match current_env:
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
 
+
 def get_property(property_name: str, with_error=True) -> str | None:
     """
     Gets a property from the request object.
@@ -64,13 +65,13 @@ def get_property(property_name: str, with_error=True) -> str | None:
         return None
 
 
-@app.errorhandler(ValueError)  # type: ignore
-def handle_value_error(error: ValueError) -> Response:
+@app.errorhandler(Exception)
+def handle_value_error(error: Exception) -> Response:
     """
-    Handles a ValueError.
+    Handles an Exception.
 
     Args:
-        error (ValueError): The ValueError to handle.
+        error (Exception): The Exception to handle.
 
     Returns:
         Response: A response object containing the error message and status code.
@@ -128,23 +129,23 @@ def identify() -> Response:
         dict: A response object containing the sessionId and message.
     """
     if (session_id := get_property("sessionId", with_error=False)) and isinstance(session_id, str):
-        identity = Identity(sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False)))
-        identify_response = IdentifyResponse(
-            message=f"Welcome back user: {session_id} !", error="", **identity
+        identity = Identity(
+            sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False))
         )
+        identify_response = IdentifyResponse(message=f"Welcome back user: {session_id} !", error="", **identity)
     else:
         identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
-        identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
-    
+        identify_response = IdentifyResponse(
+            message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
+        )
+
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
 
 
-
-
 @app.route("/upload_files", methods=["POST"])
-def upload_files() -> Response:
+async def upload_files() -> Response:
     """
     Uploads files to the server.
 
@@ -152,6 +153,7 @@ def upload_files() -> Response:
         str: Success message indicating the number of files uploaded.
         tuple: Error message and status code if user is not authenticated.
     """
+    session_id: str = str(get_property("sessionId"))
 
     def get_prefix() -> str:
         if "prefix" in request.form:
@@ -160,20 +162,42 @@ def upload_files() -> Response:
             raise ValueError("No prefix found in request.form or request.files")
 
     def get_files() -> dict:
-        return  {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
+        return {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
 
-    session_id: str = str(get_property("sessionId"))
     prefix: str = get_prefix()
     files = get_files()
-    full_document_dict = sm_app.save_files(files, session_id=session_id)
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(sm_app.process_files(full_document_dict, user_id=session_id))
-    loop.close()
-    session["files"] = {file_name: str(file_path) for file_name, file_path in full_document_dict.items()}
-    response_message = ResponseMessage(
-        message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
+
+    full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
+    file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    response_message = UploadResponse(
+        message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!",
+        error="",
+        file_id_mapping=file_id_mapping,
     )
     response = make_response(response_message, 200)
+    return response
+
+
+@app.route("/delete_file", methods=["DELETE"])
+async def delete_file() -> Response:
+    """
+    Deletes a file from the server.
+
+    Returns:
+        str: Success message indicating the number of files deleted.
+        tuple: Error message and status code if user is not authenticated.
+    """
+    session_id = str(get_property("sessionId"))
+    file_name = str(get_property("file_name"))
+    document_ids = str(get_property("document_ids"))
+    deletion_successful = sm_app.delete_file_from_vector_db(file_name, session_id=session_id)
+    message, error = "", ""
+    if deletion_successful:
+        message = f"File {file_name} deleted successfully!"
+    else:
+        error = f"File {file_name} not found!"
+    response_message = ResponseMessage(message=message, error=error)
+    response = make_response(response_message, 200 if deletion_successful else 400)
     return response
 
 
@@ -189,10 +213,7 @@ def prompt() -> Response:
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
-    chatbot = Chatbot(
-        user_id=session_id,
-        # document_dict=session["files"],
-    )
+    chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
