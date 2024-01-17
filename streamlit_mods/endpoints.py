@@ -96,4 +96,21 @@ class Endpoints:
             answer = result["answer"]
             return answer, citations, source_docs
         except Exception as err:
+            st.error(err)
+
+    @staticmethod
+    def clear_chat_history(cookie_manager: CookieManager, session_id: str | None = None) -> bool:
+        if not cookie_manager.ready():
+            st.stop()
+        try:
+            session_id_entry = {"sessionId": session_id} if session_id else {}
+            response = requests.delete("http://127.0.0.1:5000/clear_chat_history", data={**session_id_entry})
+            json_response = response.json()
+            if json_response["error"] != "":
+                raise Exception(json_response["error"])
+            response_message = json_response["message"]
+            st.toast(response_message, icon="✅")
+            return True
+        except Exception as err:
             st.error(err, icon="❌")
+        return False

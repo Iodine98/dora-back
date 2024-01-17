@@ -166,4 +166,4 @@ models/*
 *.pdf
 azure_chat_models.json
 /models/*
-chat_history.db
+*.db

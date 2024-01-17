@@ -8,7 +8,8 @@ import streamlit as st
 
 class AppLayout:
     def __init__(self, session_state_helper: SessionStateHelper) -> None:
-        st.title("DoRA (Documenten Raadplegen Assistent)")
+        st.title("DoRA Chatbot")
+        st.subheader("Documenten Raadplegen en Analyseren")
         self.session_state_helper = session_state_helper
         self.message_helper = session_state_helper.message_helper
         self.file_helper = session_state_helper.file_helper
