@@ -1,9 +1,9 @@
-'''
+"""
 ==========================================================================
         Module: Local LLM Setup
         Extending my gratitude towards SSC-ICT-Innovatie/LearningLion
 ==========================================================================
-'''
+"""
 
 from langchain.llms import LlamaCpp
 from langchain.callbacks.base import BaseCallbackHandler
@@ -18,9 +18,9 @@ load_dotenv(find_dotenv())
 
 DEFAULT_ANSWER_PREFIX_TOKENS = ["Final", "Answer", ":"]
 
+
 # Setup token streaming for streamlit. Obtained from: https://gist.github.com/goldengrape/84ce3624fd5be8bc14f9117c3e6ef81a
 class StreamDisplayHandler(BaseCallbackHandler):
-    
     def append_to_last_tokens(self, token: str) -> None:
         self.last_tokens.append(token)
         self.last_tokens_stripped.append(token.strip())
@@ -33,20 +33,23 @@ class StreamDisplayHandler(BaseCallbackHandler):
             return self.last_tokens_stripped == self.answer_prefix_tokens_stripped
         else:
             return self.last_tokens == self.answer_prefix_tokens
-    
-    def __init__(self, container, initial_text="", display_method='markdown', 
-                 answer_prefix_tokens: Optional[List[str]] = None,        
-                 strip_tokens: bool = True,
-                 stream_prefix: bool = False):
+
+    def __init__(
+        self,
+        container,
+        initial_text="",
+        display_method="markdown",
+        answer_prefix_tokens: Optional[List[str]] = None,
+        strip_tokens: bool = True,
+        stream_prefix: bool = False,
+    ):
         super().__init__()
         if answer_prefix_tokens is None:
             self.answer_prefix_tokens = DEFAULT_ANSWER_PREFIX_TOKENS
         else:
             self.answer_prefix_tokens = answer_prefix_tokens
         if strip_tokens:
-            self.answer_prefix_tokens_stripped = [
-                token.strip() for token in self.answer_prefix_tokens
-            ]
+            self.answer_prefix_tokens_stripped = [token.strip() for token in self.answer_prefix_tokens]
         else:
             self.answer_prefix_tokens_stripped = self.answer_prefix_tokens
         self.last_tokens = [""] * len(self.answer_prefix_tokens)
@@ -54,21 +57,20 @@ class StreamDisplayHandler(BaseCallbackHandler):
         self.strip_tokens = strip_tokens
         self.stream_prefix = stream_prefix
         self.answer_reached = False
-        
+
         self.container = container
         self.text = initial_text
         self.display_method = display_method
         self.new_sentence = ""
-    
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
+
+    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
         """Run when LLM starts running."""
         self.answer_reached = False
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         # Remember the last n tokens, where n = len(answer_prefix_tokens)
         self.append_to_last_tokens(token)
-        
+
         if self.check_if_answer_reached():
             self.text += token
             self.new_sentence += token
@@ -80,21 +82,24 @@ class StreamDisplayHandler(BaseCallbackHandler):
                 raise ValueError(f"Invalid display_method: {self.display_method}")
 
     def on_llm_end(self, response, **kwargs) -> None:
-        self.text=""
+        self.text = ""
 
 
 def build_llm(model_path: str, length: int, temp: float, gpu_layers: int, chat_box=None) -> BaseChatModel:
     # Local LlamaCpp model, automatically supports multiple model types
-    llm = LlamaCpp(model_path=model_path,
-                    max_tokens=length, 
-                    temperature=temp,
-                    n_gpu_layers=gpu_layers,
-                    n_batch=128, # ! arbitrary
-                    callbacks=[
-                        StreamingStdOutCallbackHandler() if not chat_box else # streaming for main.py else main_st.py
-                        StreamDisplayHandler(chat_box, display_method='write')],
-                    verbose=False, # suppresses llama_model_loader output
-                    streaming=True,
-                    n_ctx=2048 # ! arbitrary
-                    )
+    llm = LlamaCpp(
+        model_path=model_path,
+        max_tokens=length,
+        temperature=temp,
+        n_gpu_layers=gpu_layers,
+        n_batch=128,  # ! arbitrary
+        callbacks=[
+            StreamingStdOutCallbackHandler()
+            if not chat_box
+            else StreamDisplayHandler(chat_box, display_method="write")  # streaming for main.py else main_st.py
+        ],
+        verbose=False,  # suppresses llama_model_loader output
+        streaming=False,
+        n_ctx=8192,  # ! arbitrary
+    )
     return llm

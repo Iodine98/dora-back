@@ -24,6 +24,7 @@ streamlit = "^1.29.0"
 extra-streamlit-components = "^0.1.60"
 streamlit-cookies-manager = "^0.2.0"
 llama-cpp-python = "0.2.11"
+sentence-transformers = "2.2.2"
 
 
 
