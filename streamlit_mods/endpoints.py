@@ -64,8 +64,8 @@ class Endpoints:
             response = requests.delete(
                 "http://127.0.0.1:5000/delete_file",
                 data={
-                    "file_name": file_name,
-                    "document_ids": json.dumps(document_ids),
+                    "filename": file_name,
+                    "documentIds": json.dumps(document_ids),
                     **session_id_entry,
                 },
             )

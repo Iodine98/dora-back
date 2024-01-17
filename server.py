@@ -201,8 +201,8 @@ async def delete_file() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
     session_id = str(get_property("sessionId"))
-    file_name = str(get_property("file_name"))
-    document_ids = get_property("document_ids", property_type=list)
+    file_name = str(get_property("filename"))
+    document_ids = get_property("documentIds", property_type=list)
     deletion_successful = sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
     message, error = "", ""
     if deletion_successful:

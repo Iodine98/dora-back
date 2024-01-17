@@ -1,3 +1,4 @@
+from typing import cast
 from streamlit_cookies_manager import CookieManager
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -27,22 +28,28 @@ class FileHelper:
             return st.session_state.filenames
         return set()
 
+    @filenames.setter
+    def filenames(self, value: set[str]) -> None:
+        st.session_state.filenames = value
+
     @property
-    def file_states(self) -> list[dict[str, bool | UploadedFile]]:
+    def file_states(self) -> list[dict[str, bool | UploadedFile | str]]:
         if "file_states" in st.session_state:
             return st.session_state.file_states
         return []
 
-    @staticmethod
-    def has_file_been_uploaded(filename: str) -> bool:
-        for file_state in st.session_state.file_states:
+    @file_states.setter
+    def file_states(self, value: list[dict[str, bool | UploadedFile | str]]) -> None:
+        st.session_state.file_states = value
+
+    def has_file_been_uploaded(self, filename: str) -> bool:
+        for file_state in self.file_states:
             if file_state["name"] == filename:
-                return file_state["is_uploaded"]
+                return bool(file_state["is_uploaded"])
         return False
 
-    @staticmethod
-    def update_file_is_uploaded(filename: str, is_uploaded: bool) -> None:
-        for file_state in st.session_state.file_states:
+    def update_file_is_uploaded(self, filename: str, is_uploaded: bool) -> None:
+        for file_state in self.file_states:
             if file_state["name"] == filename:
                 file_state["is_uploaded"] = is_uploaded
                 return
@@ -55,24 +62,22 @@ class FileHelper:
                 continue
             unique_file_names.add(file.name)
             unique_files.append(file)
-        st.session_state.filenames = unique_file_names
-        st.session_state.file_states = [
+        self.filenames = unique_file_names
+        self.file_states = [
             {"name": file.name, "file": file, "is_uploaded": self.has_file_been_uploaded(file.name)}
             for file in unique_files
         ]
 
     def upload_files(self) -> None:
-        unuploaded_file_states = [
-            file_state for file_state in st.session_state.file_states if not file_state["is_uploaded"]
-        ]
+        unuploaded_file_states = [file_state for file_state in self.file_states if not file_state["is_uploaded"]]
         if len(unuploaded_file_states) == 0:
             return
         with st.spinner("Bestanden uploaden..."):
-            unuploaded_files = [file_state["file"] for file_state in unuploaded_file_states]
+            unuploaded_files = [cast(UploadedFile, file_state["file"]) for file_state in unuploaded_file_states]
             result = Endpoints.upload_files(self.cookie_manager, unuploaded_files, st.session_state.sessionId)
             if result:
                 for file_state in unuploaded_file_states:
-                    self.update_file_is_uploaded(file_state["name"], True)
+                    self.update_file_is_uploaded(cast(str, file_state["name"]), True)
                 self.file_id_mapping = result
 
     def delete_file(self, filename: str) -> None:
@@ -80,12 +85,9 @@ class FileHelper:
             self.cookie_manager, filename, self.file_id_mapping[filename], st.session_state.sessionId
         )
         if result:
-            st.session_state.filenames.remove(filename)
-            st.session_state.file_states = [
-                file_state for file_state in st.session_state.file_states if file_state["name"] != filename
-            ]
-            st.session_state.file_id_mapping = {
+            self.file_states = [file_state for file_state in self.file_states if file_state["name"] != filename]
+            self.file_id_mapping = {
                 filename: document_ids
-                for filename, document_ids in st.session_state.file_id_mapping.items()
+                for filename, document_ids in self.file_id_mapping.items()
                 if filename != filename
             }

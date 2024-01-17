@@ -33,6 +33,7 @@ class Sidebar:
             on_change=self.on_file_remove,
         ):
             self.file_helper.save_files(uploaded_files)
+            self.file_helper.upload_files()
             return uploaded_files
         return None
 
@@ -58,3 +59,4 @@ class Sidebar:
         if removed_file_names:
             for removed_file_name in removed_file_names:
                 self.file_helper.delete_file(removed_file_name)
+            self.file_helper.filenames = new_file_names
