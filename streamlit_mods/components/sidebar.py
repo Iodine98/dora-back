@@ -61,3 +61,13 @@ class Sidebar:
                 file_name=file_name,
                 mime="application/octet-stream",
             )
+
+    def on_file_remove(self) -> None:
+        new_files: list[UploadedFile] = st.session_state[self.session_state_helper.file_uploader_key]
+        new_file_names = set(file.name for file in new_files)
+        old_file_names = self.file_helper.filenames
+        removed_file_names = old_file_names - new_file_names
+        if removed_file_names:
+            for removed_file_name in removed_file_names:
+                self.file_helper.delete_file(removed_file_name)
+            self.file_helper.filenames = new_file_names

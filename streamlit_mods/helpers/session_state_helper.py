@@ -1,4 +1,5 @@
 import random
+import random
 from typing import Any
 import streamlit as st
 from streamlit_cookies_manager import CookieManager
@@ -14,6 +15,7 @@ class SessionStateHelper:
         st.session_state.authenticated = self.authenticated
         st.session_state.initialized = self.initialized
         st.session_state.text_input_available = self.text_input_available
+        st.session_state.file_uploader_key = self.file_uploader_key
         st.session_state.file_uploader_key = self.file_uploader_key
         self.cookie_manager = CookieManager()
         self.message_helper = MessageHelper(self.cookie_manager)

@@ -46,6 +46,7 @@ class FileHelper:
         for file_state in self.file_states:
             if file_state["name"] == filename:
                 return bool(file_state["is_uploaded"])
+                return bool(file_state["is_uploaded"])
         return False
 
     def update_file_is_uploaded(self, filename: str, is_uploaded: bool) -> None:

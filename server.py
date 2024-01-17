@@ -62,15 +62,13 @@ def get_property(property_name: str, with_error=True, property_type: type[Proper
     Returns:
         str: The property value.
     """
-    property_value: str
+    property_value: str = ""
     if property_name in session:
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
     elif with_error:
         raise ValueError(f"No {property_name} found in request.form or session")
-    else:
-        return cast(property_type, None)
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -230,6 +228,7 @@ def prompt() -> Response:
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
+    chatbot = Chatbot(user_id=session_id)
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
