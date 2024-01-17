@@ -54,8 +54,9 @@ class FileHelper:
         unuploaded_file_states =  [file_state for file_state in st.session_state.file_states if not file_state["is_uploaded"]]
         if len(unuploaded_file_states) == 0:
             return
-        unuploaded_files = [file_state["file"] for file_state in unuploaded_file_states]
-        result = Endpoints.upload_files(self.cookie_manager, unuploaded_files, st.session_state.sessionId)
-        if result:
-            for file_state in unuploaded_file_states:
-                self.update_file_is_uploaded(file_state["name"], True)
+        with st.spinner("Bestanden uploaden..."):
+            unuploaded_files = [file_state["file"] for file_state in unuploaded_file_states]
+            result = Endpoints.upload_files(self.cookie_manager, unuploaded_files, st.session_state.sessionId)
+            if result:
+                for file_state in unuploaded_file_states:
+                    self.update_file_is_uploaded(file_state["name"], True)
