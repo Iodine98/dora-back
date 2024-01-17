@@ -185,7 +185,7 @@ async def upload_files() -> Response:
         original_names_dict[filename]: document_ids for filename, document_ids in internal_file_id_mapping.items()
     }
     response_message = UploadResponse(
-        message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!",
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
         error="",
         file_id_mapping=external_file_id_mapping,
     )
@@ -208,9 +208,9 @@ async def delete_file() -> Response:
     deletion_successful = await sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
     message, error = "", ""
     if deletion_successful:
-        message = f"File {file_name} deleted successfully!"
+        message = f"Bestand: {file_name} \n\n succesvol verwijderd!"
     else:
-        error = f"File {file_name} not found!"
+        error = f"Bestand: {file_name} \n\n niet gevonden!"
     response_message = ResponseMessage(message=message, error=error)
     response = make_response(response_message, 200 if deletion_successful else 400)
     return response
@@ -246,7 +246,7 @@ def clear_chat_history() -> Response:
     session_id = str(get_property("sessionId"))
     memory_db = SQLChatMessageHistory(session_id, "sqlite:///chat_history.db")
     memory_db.clear()
-    response_message = ResponseMessage(message="Chat history cleared successfully!", error="")
+    response_message = ResponseMessage(message="Chat history succesvol gewist!", error="")
     return make_response(response_message, 200)
 
 

@@ -54,7 +54,7 @@ class FileHelper:
                 file_state["is_uploaded"] = is_uploaded
                 return
 
-    def save_files(self, files: list[UploadedFile]) -> None:
+    def save_files(self, files: list[UploadedFile]) -> list[UploadedFile]:
         unique_file_names = set()
         unique_files = []
         for file in files:
@@ -67,6 +67,7 @@ class FileHelper:
             {"name": file.name, "file": file, "is_uploaded": self.has_file_been_uploaded(file.name)}
             for file in unique_files
         ]
+        return unique_files
 
     def upload_files(self) -> None:
         unuploaded_file_states = [file_state for file_state in self.file_states if not file_state["is_uploaded"]]

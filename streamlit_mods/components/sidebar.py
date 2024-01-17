@@ -16,9 +16,12 @@ class Sidebar:
             st.stop()
         with st.sidebar:
             files = self.initialize_file_uploader()
-            self.initialize_file_downloader(files)
-            st.sidebar.button(
-                "Verwijder chatgeschiedenis",
+            if files:
+                with st.container(height=100 + 50 * len(files) if files else 200):
+                    st.subheader("Download uw bestanden hieronder")
+                    self.initialize_file_downloader(files)
+            st.button(
+                "Wis chatgeschiedenis",
                 on_click=self.message_helper.clear_chat_history,
                 args=(self.session_state_helper.sessionId,),
             )
@@ -41,9 +44,9 @@ class Sidebar:
             key=self.session_state_helper.file_uploader_key,
             on_change=self.on_file_remove,
         ):
-            self.file_helper.save_files(uploaded_files)
+            unique_files = self.file_helper.save_files(uploaded_files)
             self.file_helper.upload_files()
-            return uploaded_files
+            return unique_files
         return None
 
     def initialize_file_downloader(self, files: list[UploadedFile] | None):
