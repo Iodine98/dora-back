@@ -9,10 +9,21 @@ class SessionStateHelper:
     def __init__(self) -> None:
         st.session_state.sessionId = self.sessionId
         st.session_state.authenticated = self.authenticated
+        st.session_state.initialized = self.initialized
         st.session_state.text_input_available = self.text_input_available
         self.cookie_manager = CookieManager()
         self.message_helper = MessageHelper(self.cookie_manager)
         self.file_helper = FileHelper(self.cookie_manager)
+
+    @property
+    def initialized(self) -> bool:
+        if "initialized" in st.session_state:
+            return st.session_state.initialized
+        return False
+
+    @initialized.setter
+    def initialized(self, value: bool) -> None:
+        st.session_state.initialized = value
 
     @property
     def text_input_available(self) -> bool:

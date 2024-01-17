@@ -15,6 +15,7 @@ from flask_cors import CORS
 from serf.methods import ServerMethods
 from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
 from chatdoc.chatbot import Chatbot
+from langchain_community.chat_message_histories import SQLChatMessageHistory
 
 
 app = Flask(__name__)
@@ -40,6 +41,7 @@ match current_env:
 
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
+
 
 def get_property(property_name: str, with_error=True) -> str | None:
     """
@@ -128,19 +130,19 @@ def identify() -> Response:
         dict: A response object containing the sessionId and message.
     """
     if (session_id := get_property("sessionId", with_error=False)) and isinstance(session_id, str):
-        identity = Identity(sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False)))
-        identify_response = IdentifyResponse(
-            message=f"Welcome back user: {session_id} !", error="", **identity
+        identity = Identity(
+            sessionId=session_id, authenticated=True, hasDB=bool(get_property("hasDB", with_error=False))
         )
+        identify_response = IdentifyResponse(message=f"Welcome back user: {session_id} !", error="", **identity)
     else:
         identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
-        identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
-    
+        identify_response = IdentifyResponse(
+            message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
+        )
+
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
-
-
 
 
 @app.route("/upload_files", methods=["POST"])
@@ -160,7 +162,7 @@ def upload_files() -> Response:
             raise ValueError("No prefix found in request.form or request.files")
 
     def get_files() -> dict:
-        return  {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
+        return {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
 
     session_id: str = str(get_property("sessionId"))
     prefix: str = get_prefix()
@@ -197,6 +199,21 @@ def prompt() -> Response:
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
     return make_response(prompt_response, 200)
+
+
+@app.route("/clear_chat_history", methods=["DELETE"])
+def clear_chat_history() -> Response:
+    """
+    Clears the chat history.
+
+    Returns:
+        Response: A response object containing the message and status code.
+    """
+    session_id = str(get_property("sessionId"))
+    memory_db = SQLChatMessageHistory(session_id, "sqlite:///chat_history.db")
+    memory_db.clear()
+    response_message = ResponseMessage(message="Chat history cleared successfully!", error="")
+    return make_response(response_message, 200)
 
 
 if __name__ == "__main__":
