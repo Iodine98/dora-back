@@ -1,5 +1,5 @@
+from os import environ as os_environ
 from typing import Any
-import time
 
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
@@ -35,7 +35,7 @@ class Chatbot:
             return_source_documents=True,
         )
         self.chat_history = self.memory_db.messages
-        self.last_n_messages = 5  # TODO: Change into environment variable
+        self.last_n_messages = int(os_environ.get("LAST_N_MESSAGES", 5))
 
     def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
