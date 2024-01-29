@@ -1,5 +1,5 @@
-# Using Docker image that corresponds to a stable Debian distro with Python 3.11.7
-FROM python:3.11.7-bullseye
+# Pull Python 3.11.7 base image
+FROM python:3.11.7
 
 # Add arguments for api keys
 ARG OPENAI_API_KEY
@@ -17,11 +17,11 @@ ARG EMBEDDING_MODEL_FOLDER_PATH
 WORKDIR /app
 
 # Copy current contents of folder to app directory
-ADD . /app
+COPY . /app
 
 # Set cuBLAS environment variables
-ENV LLAMA_CUBLAS 1
-ENV CMAKE_ARGS "-DLLAMA_CUBLAS=on"
+# ENV LLAMA_CUBLAS 1
+# ENV CMAKE_ARGS "-DLLAMA_CUBLAS=on"
 
 # Set Poetry environment variables
 ENV POETRY_HOME="/opt/poetry" \
@@ -51,7 +51,7 @@ ENV SENTENCE_TRANSFORMERS_HOME $EMBEDDING_MODEL_FOLDER_PATH
 
 # Install necessary dependencies
 RUN poetry config installer.max-workers 10
-RUN poetry update -vv --without dev
+RUN poetry update -vvv --without dev
 
 # Enable port 5000
 EXPOSE 5000
