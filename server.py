@@ -14,9 +14,10 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
-from serf.methods import ServerMethods
-from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse
+from server_modules.methods import ServerMethods
+from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse
 from chatdoc.chatbot import Chatbot
+from chatdoc.utils import Utils
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 
 
@@ -245,7 +246,7 @@ def clear_chat_history() -> Response:
         Response: A response object containing the message and status code.
     """
     session_id = str(get_property("sessionId"))
-    memory_db = SQLChatMessageHistory(session_id, "sqlite:///chat_history.db")
+    memory_db = SQLChatMessageHistory(session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
     memory_db.clear()
     response_message = ResponseMessage(message="Chatgeschiedenis succesvol gewist!", error="")
     return make_response(response_message, 200)
