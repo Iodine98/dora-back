@@ -1,0 +1,6 @@
+models
+chroma
+chat_history.db
+poetry.lock
+.env
+__pycache__
