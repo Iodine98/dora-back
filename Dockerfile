@@ -1,8 +1,9 @@
 # Using Docker image that corresponds to a stable Debian distro with Python 3.11.7
 FROM python:3.11.7-bullseye
 
-# Add argument OPENAI_API_KEY
+# Add arguments for api keys
 ARG OPENAI_API_KEY
+ARG HUGGINGFACE_API_KEY
 
 # Add arguments for models
 ARG CHAT_MODEL_VENDOR_NAME=openai
@@ -46,7 +47,7 @@ ENV FETCH_K_DOCUMENTS 100
 ENV LAMBDA_MULT 0.2
 ENV STRATEGY mmr
 ENV CHAT_MODEL_FOLDER_PATH $CHAT_MODEL_FOLDER_PATH
-ENV SENTENCE_TRANSFORMERS $EMBEDDING_MODEL_FOLDER_PATH
+ENV SENTENCE_TRANSFORMERS_HOME $EMBEDDING_MODEL_FOLDER_PATH
 
 # Install necessary dependencies
 RUN poetry config installer.max-workers 10
