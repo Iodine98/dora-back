@@ -6,7 +6,8 @@ from typing import Literal, TypedDict
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from langchain.vectorstores.chroma import Chroma
-from langchain.vectorstores import VectorStoreRetriever, CallbackManagerForRetrieverRun
+from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
 from chromadb import PersistentClient
 from chromadb.api import ClientAPI
 
@@ -98,7 +99,7 @@ class VectorDatabase:
         self.retriever_settings: RetrieverSettings = self.load_retriever_settings()
         self.retriever = CustomVectorStoreRetriever(
             vectorstore=self.chroma_instance,
-            **self.retriever_settings,
+            **self.retriever_settings, # type: ignore
         )
 
     def load_retriever_settings(
