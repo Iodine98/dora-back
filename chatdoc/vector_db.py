@@ -54,6 +54,7 @@ class CustomVectorStoreRetriever(VectorStoreRetriever):
                     query, **self.search_kwargs
                 )
             )
+            docs_and_similarities.sort(key=lambda doc_sim: doc_sim[1], reverse=True)
             for doc, similarity in docs_and_similarities:
                 doc.metadata["score"] = similarity
             docs = [doc for doc, _ in docs_and_similarities]
