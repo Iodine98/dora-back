@@ -43,21 +43,28 @@ class RetrieverSettings(TypedDict, total=True):
 
 
 class CustomVectorStoreRetriever(VectorStoreRetriever):
-    # See https://github.com/langchain-ai/langchain/blob/61dd92f8215daef3d9cf1734b0d1f8c70c1571c3/libs/langchain/langchain/vectorstores/base.py#L500
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> list[Document]:
-        docs_and_similarities = (
-            self.vectorstore.similarity_search_with_relevance_scores(
+        if self.search_type == "similarity":
+            docs = self.vectorstore.similarity_search(query, **self.search_kwargs)
+        elif self.search_type == "similarity_score_threshold":
+            docs_and_similarities = (
+                self.vectorstore.similarity_search_with_relevance_scores(
+                    query, **self.search_kwargs
+                )
+            )
+            for doc, similarity in docs_and_similarities:
+                doc.metadata["score"] = similarity
+            docs = [doc for doc, _ in docs_and_similarities]
+        elif self.search_type == "mmr":
+            docs = self.vectorstore.max_marginal_relevance_search(
                 query, **self.search_kwargs
             )
-        )
-
-        # Make the score part of the document metadata
-        for doc, similarity in docs_and_similarities:
-            doc.metadata["score"] = similarity
-
-        docs = [doc for doc, _ in docs_and_similarities]
+        else:
+            raise ValueError(f"search_type of {self.search_type} not allowed.")
+        for i, doc in enumerate(docs):
+            doc.metadata["ranking"] = i + 1
         return docs
 
 class VectorDatabase:

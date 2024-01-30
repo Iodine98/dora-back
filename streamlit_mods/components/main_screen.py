@@ -90,6 +90,7 @@ class MainScreen:
             for i, citation in enumerate(citations):
                 with st.expander(f"Bron {i+1}"):
                     st.markdown(f'Bestand: {citation["source"]}')
+                    st.markdown(f'Rangorde: {citation["ranking"]}')
                     st.markdown(f'Pagina: {citation["page"]}')
                     st.markdown(f'Citaat: "{citation["proof"]}"')
 
