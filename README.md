@@ -40,16 +40,17 @@ Please configure the values in the Dockerfile before proceeding.
 
 Build the Docker container using 
 ```bash
-docker build . -t <image_name> --build-args OPENAI_API_KEY=<openai_api_key>
+docker build -t dora-back --build-args OPENAI_API_KEY=<openai_api_key> .
 ```
-The `--build-args` are optional.
+The `--build-args` are needed to provide options for local models or API keys.
 
 Run the Docker container using:
 ```bash
-docker run --name <container_name> <image_name> \
+docker run --name <container_name> -p 5000:5000 dora-back \
 -e <environment_variable>=<value> \
 -e <environment_variable>=<value>
 ```
+You can access the server at localhost:5000.
 Overriding the default values for the environment variables is optional.
 
 
