@@ -27,15 +27,10 @@ app.config["SESSION_COOKIE_SECURE"] = True
 
 current_env = os.environ.get("CURRENT_ENV", "DEV")
 
-list_of_allowed_origins: list[str] = []
 app.logger.setLevel(logging.INFO)
 match current_env:
     case "DEV":
         CORS(app)
-        if os.environ.get("DEV_URL") is not None:
-            list_of_allowed_origins.append(os.environ["DEV_URL"])
-        else:
-            raise ValueError("DEV_URL environment variable not set")
         app.logger.log(level=logging.INFO, msg="Running in development mode")
     case "PROD":
         app.logger.log(level=logging.INFO, msg="Running in production mode")
