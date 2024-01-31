@@ -110,7 +110,7 @@ class Citations:
             page = source_document.metadata["page"] + 1
             proof = source_document.page_content
             ranking = source_document.metadata["ranking"]
-            score = source_document.metadata["score"]
+            score = source_document.metadata["score"] if "score" in source_document.metadata else -1.0
             citation: Citation = ProofCitation(source, page, ranking, score, proof) if self.with_proof else BaseCitation(source, page, ranking, score)
             self.citations.add(citation)
 
