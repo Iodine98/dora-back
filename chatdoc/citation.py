@@ -20,10 +20,11 @@ class BaseCitation:
         Returns:
             dict: The citation as a dictionary.
         """
-        return {"source": self.source, "page": self.page, "text": self.format_citation_text()}
+        return {"source": self.source, "page": self.page, "ranking": self.ranking, "text": self.format_citation_text()}
 
     source: str
     page: int
+    ranking: int
 
     @abstractmethod
     def format_citation_text(self):
@@ -48,7 +49,7 @@ class ProofCitation(BaseCitation):
         Returns:
             dict: The citation as a dictionary.
         """
-        return {**super().__dict__(), "proof": self.proof,"text": self.format_citation_text()}
+        return {**super().__dict__(), "ranking": self.ranking, "proof": self.proof,"text": self.format_citation_text()}
 
     proof: str
 
@@ -82,9 +83,11 @@ class Citations:
         Returns:
             dict: The citations as a dictionary.
         """
-        return {"citations": [citation.__dict__() for citation in self.citations], "with_proof": self.with_proof}
+        source_citations = [citation.__dict__() for citation in self.citations]
+        source_citations.sort(key=lambda citation: citation["ranking"])
+        return {"citations": source_citations, "with_proof": self.with_proof}
 
-    def add_citation(self, source: str, page: int, proof: str):
+    def add_citation(self, source: str, page: int, ranking: int, proof: str):
         """
         Add a citation to the set of citations.
 
@@ -94,7 +97,7 @@ class Citations:
             proof (str): The proof or evidence supporting the citation.
 
         """
-        citation: Citation = ProofCitation(source, page, proof) if self.with_proof else BaseCitation(source, page)
+        citation: Citation = ProofCitation(source, page, ranking, proof) if self.with_proof else BaseCitation(source, page, ranking)
         self.citations.add(citation)
 
     def get_unique_citations(self, source_documents: list[Any]):
@@ -108,7 +111,8 @@ class Citations:
             source = Utils.remove_date_from_filename(Path(raw_source).name)
             page = source_document.metadata["page"] + 1
             proof = source_document.page_content
-            self.add_citation(source, page, proof)
+            ranking = source_document.metadata["ranking"]
+            self.add_citation(source, page, ranking, proof)
 
     def print_citations(self):
         """

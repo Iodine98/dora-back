@@ -6,6 +6,8 @@ from typing import Literal, TypedDict
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from langchain.vectorstores.chroma import Chroma
+from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
 from chromadb import PersistentClient
 from chromadb.api import ClientAPI
 
@@ -39,6 +41,32 @@ class RetrieverSettings(TypedDict, total=True):
     search_kwargs: SearchArgs
     search_type: str
 
+
+class CustomVectorStoreRetriever(VectorStoreRetriever):
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> list[Document]:
+        if self.search_type == "similarity":
+            docs = self.vectorstore.similarity_search(query, **self.search_kwargs)
+        elif self.search_type == "similarity_score_threshold":
+            docs_and_similarities = (
+                self.vectorstore.similarity_search_with_relevance_scores(
+                    query, **self.search_kwargs
+                )
+            )
+            docs_and_similarities.sort(key=lambda doc_sim: doc_sim[1], reverse=True)
+            for doc, similarity in docs_and_similarities:
+                doc.metadata["score"] = similarity
+            docs = [doc for doc, _ in docs_and_similarities]
+        elif self.search_type == "mmr":
+            docs = self.vectorstore.max_marginal_relevance_search(
+                query, **self.search_kwargs
+            )
+        else:
+            raise ValueError(f"search_type of {self.search_type} not allowed.")
+        for i, doc in enumerate(docs):
+            doc.metadata["ranking"] = i + 1
+        return docs
 
 class VectorDatabase:
     """
@@ -77,7 +105,10 @@ class VectorDatabase:
             persist_directory="./chroma_db",
         )
         self.retriever_settings: RetrieverSettings = self.load_retriever_settings()
-        self.retriever = self.chroma_instance.as_retriever(**self.retriever_settings)
+        self.retriever = CustomVectorStoreRetriever(
+            vectorstore=self.chroma_instance,
+            **self.retriever_settings, # type: ignore
+        )
 
     def load_retriever_settings(
         self,
