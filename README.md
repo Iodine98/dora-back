@@ -24,7 +24,7 @@ Make sure to set all the environment variables like:
 - `CHAT_MODEL_NAME`: the name of the chat model (e.g. gpt-turbo-3.5)
 - `EMBEDDING_MODEL_VENDOR_NAME`: the name of the embeddings model vendor [openai, local, huggingface]
 - `EMBEDDING_MODEL_NAME`: the name of the embeddings model (e.g. text-embedding-ada-002)
-- `DORA_ENV`: the current environment [DEV, TST, PROD]
+- `CURRENT_ENV`: the current environment [DEV, TST, PROD]
 - `CHAT_MODEL_FOLDER_PATH`: the path to the folder of local chat models
 - `EMBEDDING_MODEL_FOLDER_PATH`: the path to the folder of local embedding models
 
