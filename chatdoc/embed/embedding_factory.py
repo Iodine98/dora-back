@@ -38,7 +38,7 @@ class EmbeddingFactory:
             "openai": "OPENAI_API_KEY",
             "huggingface": "HUGGINGFACE_API_KEY",
         }
-        self.vendor_name = vendor_name if vendor_name is not None else Utils.get_env_variable("EMBEDDING_VENDOR_NAME")
+        self.vendor_name = vendor_name if vendor_name is not None else Utils.get_env_variable("EMBEDDING_MODEL_VENDOR_NAME")
         self.embedding_model_name = (
             embedding_model_name if embedding_model_name is not None else Utils.get_env_variable("EMBEDDING_MODEL_NAME")
         )
