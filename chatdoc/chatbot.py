@@ -45,8 +45,7 @@ class Chatbot:
         result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages :]})
         for message in result["chat_history"]:
             self.memory_db.add_message(message)
-        citations: Citations = Citations(set(), True)
-        citations.get_unique_citations(result["source_documents"])
+        citations = Citations(result["source_documents"])
         result["chat_history"] = [message.dict() for message in result["chat_history"]]
         result["source_documents"] = [source_document.dict() for source_document in result["source_documents"]]
         result["citations"] = citations.__dict__()
