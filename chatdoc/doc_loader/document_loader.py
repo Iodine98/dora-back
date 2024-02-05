@@ -1,6 +1,7 @@
 from pathlib import Path
 from itertools import chain
 from logging import Logger, INFO
+from typing import Iterator
 from tqdm.auto import tqdm
 import os
 
@@ -33,11 +34,11 @@ class DocumentLoader:
     ):
         self.loader_factory = loader_factory
         self.logger = logger if logger else Logger("DocumentLoader")
-        self.loaders = self.initialize_loaders(document_dict)
-        self.document_iterator = self.chain_document_iterators()
+        self.loaders_dict: dict[str, BaseLoader] = self.initialize_loaders(document_dict)
+        self.document_iterators_dict: dict[str, Iterator[Document]] = self.map_document_iterators()
         self.text_splitter: TextSplitter = self.load_token_text_splitter()
 
-    def initialize_loaders(self, document_dict: dict[str, Path]) -> list[BaseLoader]:
+    def initialize_loaders(self, document_dict: dict[str, Path]) -> dict[str, BaseLoader]:
         """
         Initializes the loaders using the document dictionary.
 
@@ -48,16 +49,16 @@ class DocumentLoader:
             list: A list of loaders initialized using the document dictionary.
 
         """
-        loaders = [
-            self.loader_factory.create(
+        loaders_dict = {
+            file_name: self.loader_factory.create(
                 abs_file_path=str(file_path_obj.absolute()),
                 file_extension=file_path_obj.suffix,
             )
-            for file_path_obj in tqdm(document_dict.values(), desc="load documents")
-        ]
-        return loaders
+            for file_name, file_path_obj in tqdm(document_dict.items(), desc="load documents")
+        }
+        return loaders_dict
 
-    def chain_document_iterators(self) -> chain[Document]:
+    def map_document_iterators(self) -> dict[str, Iterator[Document]]:
         """
         Chains the document iterators from all loaders.
 
@@ -65,7 +66,10 @@ class DocumentLoader:
             itertools.chain: An iterator that chains the document iterators from all loaders.
 
         """
-        return chain(*[loader.lazy_load() for loader in tqdm(self.loaders, desc="chain document iterators")])
+        return {
+            file_name: loader.lazy_load()
+            for file_name, loader in tqdm(self.loaders_dict.items(), desc="map document iterators")
+        }
 
     def load_token_text_splitter(self) -> TextSplitter:
         """

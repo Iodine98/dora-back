@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from abc import abstractmethod
 from typing import Any
 from pathlib import Path
@@ -20,10 +20,12 @@ class BaseCitation:
         Returns:
             dict: The citation as a dictionary.
         """
-        return {"source": self.source, "page": self.page, "text": self.format_citation_text()}
+        return {"source": self.source, "page": self.page, "ranking": self.ranking, "score": self.score, "text": self.format_citation_text()}
 
     source: str
     page: int
+    ranking: int
+    score: float
 
     @abstractmethod
     def format_citation_text(self):
@@ -71,9 +73,17 @@ class Citations:
 
     This class represents a collection of citations. It provides methods to add citations, get unique citations from source documents, and print the citations.
     """
+    source_documents: list[Any]
+    citations: set[Citation] = field(default_factory=set)
+    with_proof: bool = True
 
-    citations: set[Citation]
-    with_proof: bool
+    def __post_init__(self):
+        """
+        Initialize the citations.
+        """
+        self.get_unique_citations()
+        
+        
 
     def __dict__(self):
         """
@@ -82,33 +92,28 @@ class Citations:
         Returns:
             dict: The citations as a dictionary.
         """
-        return {"citations": [citation.__dict__() for citation in self.citations], "with_proof": self.with_proof}
+        source_citations = [citation.__dict__() for citation in self.citations]
+        source_citations.sort(key=lambda citation: citation["ranking"])
+        return {"citations": source_citations, "with_proof": self.with_proof}
 
-    def add_citation(self, source: str, page: int, proof: str):
-        """
-        Add a citation to the set of citations.
-
-        Args:
-            source (str): The source of the citation.
-            page (int): The page number of the citation.
-            proof (str): The proof or evidence supporting the citation.
-
-        """
-        citation: Citation = ProofCitation(source, page, proof) if self.with_proof else BaseCitation(source, page)
-        self.citations.add(citation)
-
-    def get_unique_citations(self, source_documents: list[Any]):
+    
+    def get_unique_citations(self):
         """
         Get the unique citations from the source documents.
 
         Iterate through the list of source documents and extract the source, page number, and proof for each document. Then, add the citation to the collection of unique citations.
         """
-        for source_document in source_documents:
+
+        for source_document in self.source_documents:
             raw_source = source_document.metadata["source"]
             source = Utils.remove_date_from_filename(Path(raw_source).name)
             page = source_document.metadata["page"] + 1
             proof = source_document.page_content
-            self.add_citation(source, page, proof)
+            ranking = source_document.metadata["ranking"]
+            score = source_document.metadata["score"] if "score" in source_document.metadata else -1.0
+            citation: Citation = ProofCitation(source, page, ranking, score, proof) if self.with_proof else BaseCitation(source, page, ranking, score)
+            self.citations.add(citation)
+
 
     def print_citations(self):
         """

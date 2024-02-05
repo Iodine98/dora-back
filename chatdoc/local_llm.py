@@ -98,7 +98,7 @@ def build_llm(model_path: str, length: int, temp: float, gpu_layers: int, chat_b
             if not chat_box
             else StreamDisplayHandler(chat_box, display_method="write")  # streaming for main.py else main_st.py
         ],
-        verbose=False,  # suppresses llama_model_loader output
+        verbose=True,  # suppresses llama_model_loader output
         streaming=False,
         n_ctx=8192,  # ! arbitrary
     )

@@ -34,8 +34,18 @@ class IdentifyResponse(ResponseMessage, Identity):
     Represents a response for identity identification.
     """
 
+
+class UploadResponse(ResponseMessage):
+    """
+    Represents a response for uploading files.
+    """
+
+    fileIdMapping: dict[str, list[str]]
+
+
 class PromptResponse(ResponseMessage):
     """
     Represents a response for a prompt.
     """
+
     result: dict[str, Any]

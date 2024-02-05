@@ -54,7 +54,7 @@ class ChatModel:
                     model_path=model_path,
                     length=128,  # TODO: Change this to env variable
                     temp=0,
-                    gpu_layers=50,  # TODO: Change this to env variable
+                    gpu_layers=5,  # TODO: Change this to env variable
                     chat_box=None,  # TODO: Change this to env variable
                 )
             case _:

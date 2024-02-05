@@ -10,9 +10,9 @@ def test_env_fn_called_missing_vendor_name():
     """
     Test case to ensure that the env_fn is called when the vendor name is not set.
     """
-    embedding_factory = EmbeddingFactory(embedding_model_name="gpt-3")
-    if "EMBEDDING_VENDOR_NAME" in os.environ:
-        assert embedding_factory.vendor_name == os.environ["EMBEDDING_VENDOR_NAME"]
+    embedding_factory = EmbeddingFactory(embedding_model_name="gpt-3.5-turbo")
+    if "EMBEDDING_MODEL_VENDOR_NAME" in os.environ:
+        assert embedding_factory.vendor_name == os.environ["EMBEDDING_MODEL_VENDOR_NAME"]
     else:
         with pytest.raises(ValueError, match="not set in environment"):
             embedding_factory.create()
