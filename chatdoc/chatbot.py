@@ -5,6 +5,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from langchain_community.chat_message_histories import SQLChatMessageHistory
+from langchain_core.messages.base import messages_to_dict
 
 
 from .vector_db import VectorDatabase
@@ -43,10 +44,12 @@ class Chatbot:
         Method to send a prompt to the chatbot
         """
         result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages :]})
-        for message in result["chat_history"]:
-            self.memory_db.add_message(message)
         citations = Citations(result["source_documents"])
-        result["chat_history"] = [message.dict() for message in result["chat_history"]]
-        result["source_documents"] = [source_document.dict() for source_document in result["source_documents"]]
         result["citations"] = citations.__dict__()
+        for message in result["chat_history"]:
+            if message.type == "ai":
+                message.additional_kwargs["citations"] = result["citations"]
+            self.memory_db.add_message(message)
+        result["chat_history"] = messages_to_dict(result["chat_history"])
+        
         return result
