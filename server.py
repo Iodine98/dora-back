@@ -15,7 +15,7 @@ from flask_cors import CORS
 
 # local imports
 from server_modules.methods import ServerMethods
-from server_modules.final_answer_model import FinalAnswerModel
+from server_modules.models import add_new_record, update_record_with_final_answer
 from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
@@ -148,7 +148,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-
+    add_new_record(identity["sessionId"])
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -259,12 +259,7 @@ def submit_final_answer() -> Response:
     """
     session_id = str(get_property("sessionId"))
     final_answer = get_property("finalAnswer", property_type=dict)
-    db_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
-    FinalAnswerModel.metadata.create_all(db_engine) # CREATE TABLE IF NOT EXISTS final_answer
-    insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(session_id=session_id, final_answer=final_answer) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
-    with db_engine.connect() as connection:
-        connection.execute(insertion_stmt)
-        connection.commit()
+    update_record_with_final_answer(session_id, final_answer)
     response_message = ResponseMessage(message="Final answer successfully submitted!", error="")
     return make_response(response_message, 200)
 
