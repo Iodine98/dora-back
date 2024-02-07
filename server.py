@@ -258,7 +258,7 @@ def submit_final_answer() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    final_answer = request.json
+    final_answer = get_property("finalAnswer", property_type=dict)
     db_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
     FinalAnswerModel.metadata.create_all(db_engine) # CREATE TABLE IF NOT EXISTS final_answer
     insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(session_id=session_id, final_answer=final_answer) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
