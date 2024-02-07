@@ -49,3 +49,10 @@ class PromptResponse(ResponseMessage):
     """
 
     result: dict[str, Any]
+
+class ChatHistoryResponse(ResponseMessage):
+    """
+    Represents a response for chat history.
+    """
+    result: list[dict[str, Any]]
+
