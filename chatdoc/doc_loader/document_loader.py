@@ -5,7 +5,7 @@ from typing import Iterator
 from tqdm.auto import tqdm
 import os
 
-from langchain.text_splitter import TokenTextSplitter, TextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 from langchain.schema import Document
 
 from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
@@ -92,4 +92,4 @@ class DocumentLoader:
         else:
             self.logger.log(level=INFO, msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
-        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0, disallowed_special=())
+        return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
