@@ -15,9 +15,10 @@ from flask_cors import CORS
 
 # local imports
 from server_modules.methods import ServerMethods
-from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse
+from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
+from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 
 
@@ -231,6 +232,19 @@ def prompt() -> Response:
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
     return make_response(prompt_response, 200)
+
+@app.route("/get_chat_history", methods=["GET"])
+def get_chat_history() -> Response:
+    """
+    Gets the chat history.
+
+    Returns:
+        Response: A response object containing the chat history and status code.
+    """
+    session_id = str(get_property("sessionId"))
+    memory_db = SQLChatMessageHistory(session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
+    response_message = ChatHistoryResponse(message="Chatgeschiedenis succesvol opgehaald!", error="", result=messages_to_dict(memory_db.messages))
+    return make_response(response_message, 200)
 
 
 @app.route("/clear_chat_history", methods=["DELETE"])
