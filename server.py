@@ -15,11 +15,13 @@ from flask_cors import CORS
 
 # local imports
 from server_modules.methods import ServerMethods
+from server_modules.models import add_new_record, update_record_with_final_answer
 from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
+import sqlalchemy
 
 
 app = Flask(__name__)
@@ -147,7 +149,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-
+    add_new_record(identity["sessionId"])
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -260,6 +262,24 @@ def clear_chat_history() -> Response:
     memory_db.clear()
     response_message = ResponseMessage(message="Chatgeschiedenis succesvol gewist!", error="")
     return make_response(response_message, 200)
+
+@app.route("/submit_final_answer", methods=["POST"])
+def submit_final_answer() -> Response:
+    """
+    This function handles the final answer submission from the client.
+
+    Returns:
+        tuple: A tuple containing the response message and the HTTP status code.
+    """
+    session_id = str(get_property("sessionId"))
+    final_answer = get_property("finalAnswer", property_type=dict)
+    update_record_with_final_answer(session_id, final_answer)
+    response_message = ResponseMessage(message="Final answer successfully submitted!", error="")
+    return make_response(response_message, 200)
+
+
+
+
 
 
 if __name__ == "__main__":
