@@ -50,6 +50,6 @@ class Chatbot:
             if message.type == "ai":
                 message.additional_kwargs["citations"] = result["citations"]
             self.memory_db.add_message(message)
-        result["chat_history"] = messages_to_dict(result["chat_history"])
-        
+        del result["source_documents"]
+        result["chat_history"] = messages_to_dict(result["chat_history"]) 
         return result
