@@ -65,9 +65,6 @@ ENV CHAT_HISTORY_CONNECTION_STRING $CHAT_HISTORY_CONNECTION_STRING
 ENV FINAL_ANSWER_CONNECTION_STRING $FINAL_ANSWER_CONNECTION_STRING
 ENV LOGGING_FILE_PATH /app/logs/dora-backend.log
 
-# Any volume mount created at runtime points to the logs directory
-VOLUME /app/logs
-
 
 # Set virtual environment and Path
 ENV VIRTUAL_ENV=/app/.venv \
