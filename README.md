@@ -26,7 +26,7 @@ Make sure to set all the environment variables like:
 - `CHAT_MODEL_NAME`: the name of the chat model (e.g. gpt-turbo-3.5)
 - `EMBEDDING_MODEL_VENDOR_NAME`: the name of the embeddings model vendor [openai, local, huggingface]
 - `EMBEDDING_MODEL_NAME`: the name of the embeddings model (e.g. text-embedding-ada-002)
-- `CURRENT_ENV`: the current environment [DEV, TST, PROD]
+- `CURRENT_ENV`: the current environment [DEV, TST, PROD]. In `DEV` a CORS wrapper is applied to the Flask-server, but not in `TST` or `PROD`. In `PROD`, the server will connect to a defined remote endpoint for the Chroma Vector DB, but in `DEV` and `TST`, it will make use of a persistent client in Python.
 - `CHAT_MODEL_FOLDER_PATH`: the path to the folder of local chat models
 - `EMBEDDING_MODEL_FOLDER_PATH`: the path to the folder of local embedding models
 - `OPENAI_API_KEY`: an OpenAI API key to use an OpenAI model specified in `CHAT_MODEL_NAME`
@@ -67,4 +67,6 @@ docker run --name <container_name> -p 5000:5000 dora-back \
 You can access the server at localhost:5000.
 Overriding the default values for the environment variables is optional.
 
+## Removing CORS and connecting to remote Vector DB
+To be able to remove the CORS wrapper and connect to a remote vector database, set the `CURRENT_ENV` variable to `PROD`.
 
