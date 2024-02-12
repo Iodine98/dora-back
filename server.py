@@ -1,10 +1,8 @@
 # system imports
 import time
 import uuid
-import os
 import json
 from typing import Any, cast
-from logging.config import dictConfig
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
@@ -12,6 +10,7 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
+from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
 from server_modules.models import add_new_record, update_record_with_final_answer
 from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
@@ -20,38 +19,14 @@ from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 
-dictConfig(
-    {
-        "version": 1,
-        "formatters": {
-            "default": {
-                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-            }
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-                "formatter": "default",
-            },
-            "file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": "dora-backend.log",
-                "maxBytes": 1000000,
-                "backupCount": 5,
-                "formatter": "default",
-            },
-        },
-        "root": {"level": "INFO", "handlers": ["console", "file"]},
-    }
-)
+set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
 
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
-current_env = os.environ.get("CURRENT_ENV", "DEV")
+current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
         CORS(app)
