@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import tempfile
-from logging import INFO
 from tqdm.auto import tqdm
 
 from flask import Flask

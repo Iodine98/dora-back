@@ -4,9 +4,7 @@ import uuid
 import os
 import json
 from typing import Any, cast
-
-
-import logging
+from logging.config import dictConfig
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
@@ -21,7 +19,32 @@ from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
-import sqlalchemy
+
+dictConfig(
+    {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "formatter": "default",
+            },
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": "dora-backend.log",
+                "maxBytes": 1000000,
+                "backupCount": 5,
+                "formatter": "default",
+            },
+        },
+        "root": {"level": "INFO", "handlers": ["console", "file"]},
+    }
+)
 
 
 app = Flask(__name__)
@@ -29,14 +52,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
 current_env = os.environ.get("CURRENT_ENV", "DEV")
-
-app.logger.setLevel(logging.INFO)
 match current_env:
     case "DEV":
         CORS(app)
-        app.logger.log(level=logging.INFO, msg="Running in development mode")
+        app.logger.info(msg="Running in development mode")
     case "PROD":
-        app.logger.log(level=logging.INFO, msg="Running in production mode")
+        app.logger.info(msg="Running in production mode")
     case _:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
 
