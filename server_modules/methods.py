@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import tempfile
-from logging import INFO
+import shutil
 from tqdm.auto import tqdm
 
 from flask import Flask
@@ -12,6 +12,32 @@ from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.utils import Utils
+
+def create_tmp_dir(session_id: str) -> Path:
+    """
+    Create a temporary directory to store the files of the session ID in before processing them asynchronously
+    Return: a Path object with the path to the new directory
+    """
+    if(session_id == ""):
+        raise ValueError("Session ID cannot be empty")
+    dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
+    os.makedirs(dir_path, exist_ok=True)
+    return dir_path
+
+def delete_tmp_dir(session_id: str) -> bool:
+    """
+    Delete the temporary directory coupled with the session ID when processing has finished
+    Return: a bool to indicate if it succeeded
+    """
+    if(session_id == ""):
+        raise ValueError("Session ID cannot be empty")
+    dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
+    try:
+        shutil.rmtree(dir_path, ignore_errors=True)
+        return True
+    except FileNotFoundError:
+        return False
+
 
 
 class ServerMethods:
@@ -38,8 +64,8 @@ class ServerMethods:
         Returns:
             A tuple containing the original file names and the full file paths.
         """
-        dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
-        os.makedirs(dir_path, exist_ok=True)
+        dir_path = create_tmp_dir(session_id=session_id)
+        self.app.logger.info(f"Created temporary directory for session {session_id}")
         original_name_dict: dict[str, str] = {}
         full_document_dict: dict[str, Path] = {}
         for filename, file in tqdm(files.items(), desc="Saving files"):
@@ -71,6 +97,10 @@ class ServerMethods:
             documents = document_loader.text_splitter.split_documents(document_iterator)
             document_ids = await vector_db.add_documents(documents)
             file_id_mapping[filename] = document_ids
+        if delete_tmp_dir(user_id):
+            self.app.logger.info(f"Cleaned up temporary directory for session {user_id}")
+        else:
+            self.app.logger.error(f"Failed to clean up temporary directory for session {user_id}")       
         return file_id_mapping
 
     async def delete_docs_from_vector_db(self, document_ids: list[str], session_id: str) -> bool:
