@@ -40,7 +40,8 @@ Make sure to set all the environment variables like:
 - `LAST_N_MESSAGES`: the last n messages to include from the chat history; defaults to `5`.
 - `CHAT_MODEL_FOLDER_PATH`: the folder path to store LOCAL chat models in.
 - `SENTENCE_TRANSFORMERS_HOME`: the folder path to store LOCAL embedding models in.
-- `CHAT_HISTORY_CONNECTION_STRING`: an SQL-connection string pointing towards a SQL-DB where chat history can be stored in. The schema will automatically be created in the database mentioned in the SQL-connection string
+- `CHAT_HISTORY_CONNECTION_STRING`: an SQL-connection string pointing towards a SQL-DB where chat history can be stored in. The schema will automatically be created in the database mentioned in the SQL-connection string.
+- `LOGGING_FILE_PATH`: a file path where the logging files will be stored.
 
 Then run `poetry run flask --app server run`
 

@@ -1,6 +1,5 @@
 from pathlib import Path
-from itertools import chain
-from logging import Logger, INFO
+from logging import Logger
 from typing import Iterator
 from tqdm.auto import tqdm
 import os
@@ -88,14 +87,14 @@ class DocumentLoader:
         """
         if "CHUNK_SIZE" in os.environ:
             chunk_size = int(os.environ["CHUNK_SIZE"])
-            self.logger.log(level=INFO, msg=f"Using chunk size of {chunk_size}")
+            self.logger.info(msg=f"Using chunk size of {chunk_size}")
         else:
-            self.logger.log(level=INFO, msg="No chunk size specified, defaulting to 1000")
+            self.logger.info(msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
         if "CHUNK_OVERLAP" in os.environ:
             chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
-            self.logger.log(level=INFO, msg=f"Using chunk overlap of {chunk_overlap} tokens")
+            self.logger.info(msg=f"Using chunk overlap of {chunk_overlap} tokens")
         else:
-            self.logger.log(level=INFO, msg="No chunk overlap specified, defaulting to 0")
+            self.logger.info(msg="No chunk overlap specified, defaulting to 0")
             chunk_overlap = 0
         return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

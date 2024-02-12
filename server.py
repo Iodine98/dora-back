@@ -1,12 +1,8 @@
 # system imports
 import time
 import uuid
-import os
 import json
 from typing import Any, cast
-
-
-import logging
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
@@ -14,6 +10,7 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
+from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
 from server_modules.models import add_new_record, update_record_with_final_answer
 from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
@@ -21,22 +18,21 @@ from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
-import sqlalchemy
+
+set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
 
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
-current_env = os.environ.get("CURRENT_ENV", "DEV")
-
-app.logger.setLevel(logging.INFO)
+current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
         CORS(app)
-        app.logger.log(level=logging.INFO, msg="Running in development mode")
+        app.logger.info(msg="Running in development mode")
     case "PROD":
-        app.logger.log(level=logging.INFO, msg="Running in production mode")
+        app.logger.info(msg="Running in production mode")
     case _:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
 
