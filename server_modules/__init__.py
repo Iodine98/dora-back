@@ -1,8 +1,10 @@
 from logging.config import dictConfig
+import os
 
 def set_logging_config(filename: str, max_bytes: int = 1_000_000, backup_count: int = 5):
     if filename == "":
         raise ValueError("Filename cannot be empty.")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     dictConfig(
     {
         "version": 1,
