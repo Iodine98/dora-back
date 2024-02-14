@@ -15,16 +15,18 @@ services:
       - CHAT_HISTORY_CONNECTION_STRING=${MARIADB_INSTANCE_URL}/chat_history
       - FINAL_ANSWER_CONNECTION_STRING=${MARIADB_INSTANCE_URL}/final_answer
     volumes:
-      - logdir:/app/logs
-      - chat_model_folder_path:/models/chat_models
-      - embedding_model_folder_path:/models/embedding_models
+      - ${LOG_DIR}:/app/logs
+      # - chat_model_folder_path:/models/chat_models
+      # - embedding_model_folder_path:/models/embedding_models
+    depends_on:
+      - dora-mariadb
 
   dora-mariadb:
     image: mariadb:latest
     expose:
       - "3306"
-    volumes:
-      - ${MARIADB_HOST_PATH}:${MARIADB_CONTAINER_PATH}
+    # volumes:
+    #   - ${MARIADB_HOST_PATH}:${MARIADB_CONTAINER_PATH}
     environment:
       - MARIADB_ROOT_PASSWORD: root
       - MARIADB_USER=${MARIADB_USER}
