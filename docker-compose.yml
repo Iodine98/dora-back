@@ -1,0 +1,31 @@
+version: '3'
+services:
+  dora-backend:
+    image: dora-backend
+    expose:
+      - "5000"
+    environment:
+      - FLASK_PORT=5000
+      - TOP_K_DOCUMENTS=10
+      - MINIMUM_ACCURACY=0.50
+      - FETCH_K_DOCUMENTS=100
+      - LAMBDA_MULT=0.2
+      - STRATEGY=similarity_score_threshold
+      - MARIADB_INSTANCE_URL=mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
+    volumes:
+      - logdir:/app/logs
+      - chat_model_folder_path:/models/chat_models
+      - embedding_model_folder_path:/models/embedding_models
+
+  dora-mariadb:
+    image: mariadb:latest
+    expose:
+      - "3306"
+    volumes:
+      - ${MARIADB_HOST_PATH}:${MARIADB_CONTAINER_PATH}
+    environment:
+      - MARIADB_ROOT_PASSWORD: root
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+
+ 
