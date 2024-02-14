@@ -23,7 +23,6 @@ services:
       FETCH_K_DOCUMENTS: 100
       LAMBDA_MULT: 0.2
       STRATEGY: similarity_score_threshold
-      MARIADB_INSTANCE_URL: mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
       CHAT_HISTORY_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/chat_history
       FINAL_ANSWER_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/final_answer
     volumes:
