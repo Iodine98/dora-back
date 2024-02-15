@@ -1,4 +1,5 @@
 # system imports
+import os
 import time
 import uuid
 import json
@@ -13,7 +14,14 @@ from flask_cors import CORS
 from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
 from server_modules.models import add_new_record, update_record_with_final_answer
-from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
+from server_modules.class_defs import (
+    IdentifyResponse,
+    Identity,
+    ResponseMessage,
+    PromptResponse,
+    UploadResponse,
+    ChatHistoryResponse,
+)
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
@@ -42,12 +50,13 @@ app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
 
 
-
 Basic = str | int | float | bool
 Property = Basic | dict | tuple | list
 
 
-def get_property(property_name: str, with_error=True, property_type: type[Property] = str) -> Any:
+def get_property(
+    property_name: str, with_error=True, property_type: type[Property] = str
+) -> Any:
     """
     Gets a property from the request object.
 
@@ -103,7 +112,9 @@ def add_cors_headers(response: Response) -> Response:
     host = request.headers.get("Host")
     if host != current_host_port:
         if origin is not None:
-            response_message = ResponseMessage(message="", error="No origin header found")
+            response_message = ResponseMessage(
+                message="", error="No origin header found"
+            )
             return make_response(response_message, 400)
     if host == current_host_port:
         origin = host
@@ -135,15 +146,21 @@ def identify() -> Response:
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    if (session_id := get_property("sessionId", with_error=False)) and isinstance(session_id, str):
+    if (session_id := get_property("sessionId", with_error=False)) and isinstance(
+        session_id, str
+    ):
         identity = Identity(
             sessionId=session_id,
             authenticated=True,
             hasDB=bool(get_property("hasDB", with_error=False, property_type=bool)),
         )
-        identify_response = IdentifyResponse(message=f"Welcome back user: {session_id} !", error="", **identity)
+        identify_response = IdentifyResponse(
+            message=f"Welcome back user: {session_id} !", error="", **identity
+        )
     else:
-        identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
+        identity = Identity(
+            sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False
+        )
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
@@ -171,16 +188,25 @@ async def upload_files() -> Response:
             raise ValueError("No prefix found in request.form or request.files")
 
     def get_files() -> dict:
-        return {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
+        return {
+            k.lstrip(prefix): v
+            for k, v in request.files.items()
+            if k.startswith(prefix)
+        }
 
     prefix: str = get_prefix()
     files = get_files()
 
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
     time.sleep(1)
     external_file_id_mapping = {
-        original_names_dict[filename]: document_ids for filename, document_ids in internal_file_id_mapping.items()
+        original_names_dict[filename]: document_ids
+        for filename, document_ids in internal_file_id_mapping.items()
     }
     response_message = UploadResponse(
         message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
@@ -203,7 +229,9 @@ async def delete_file() -> Response:
     session_id = str(get_property("sessionId"))
     file_name = str(get_property("filename"))
     document_ids = get_property("documentIds", property_type=list)
-    deletion_successful = await sm_app.delete_docs_from_vector_db(document_ids, session_id=session_id)
+    deletion_successful = await sm_app.delete_docs_from_vector_db(
+        document_ids, session_id=session_id
+    )
     message, error = "", ""
     if deletion_successful:
         message = f"Bestand: {file_name} \n\n succesvol verwijderd!"
@@ -229,9 +257,12 @@ def prompt() -> Response:
     chatbot = Chatbot(user_id=session_id)
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
-        message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
+        message="Prompt result is found under the result key.",
+        error="",
+        result=chatbot.send_prompt(message),
     )
     return make_response(prompt_response, 200)
+
 
 @app.route("/get_chat_history", methods=["GET"])
 def get_chat_history() -> Response:
@@ -242,8 +273,14 @@ def get_chat_history() -> Response:
         Response: A response object containing the chat history and status code.
     """
     session_id = str(get_property("sessionId"))
-    memory_db = SQLChatMessageHistory(session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
-    response_message = ChatHistoryResponse(message="Chatgeschiedenis succesvol opgehaald!", error="", result=messages_to_dict(memory_db.messages))
+    memory_db = SQLChatMessageHistory(
+        session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+    )
+    response_message = ChatHistoryResponse(
+        message="Chatgeschiedenis succesvol opgehaald!",
+        error="",
+        result=messages_to_dict(memory_db.messages),
+    )
     return make_response(response_message, 200)
 
 
@@ -256,10 +293,15 @@ def clear_chat_history() -> Response:
         Response: A response object containing the message and status code.
     """
     session_id = str(get_property("sessionId"))
-    memory_db = SQLChatMessageHistory(session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
+    memory_db = SQLChatMessageHistory(
+        session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+    )
     memory_db.clear()
-    response_message = ResponseMessage(message="Chatgeschiedenis succesvol gewist!", error="")
+    response_message = ResponseMessage(
+        message="Chatgeschiedenis succesvol gewist!", error=""
+    )
     return make_response(response_message, 200)
+
 
 @app.route("/submit_final_answer", methods=["POST"])
 def submit_final_answer() -> Response:
@@ -272,13 +314,12 @@ def submit_final_answer() -> Response:
     session_id = str(get_property("sessionId"))
     final_answer = get_property("finalAnswer", property_type=dict)
     update_record_with_final_answer(session_id, final_answer)
-    response_message = ResponseMessage(message="Final answer successfully submitted!", error="")
+    response_message = ResponseMessage(
+        message="Final answer successfully submitted!", error=""
+    )
     return make_response(response_message, 200)
 
 
-
-
-
-
-if __name__ == "__main__":
-    app.run(port=5000)
+# if __name__ == "__main__":
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
