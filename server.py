@@ -12,7 +12,7 @@ from flask_cors import CORS
 # local imports
 from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
-from server_modules.models import add_new_record, update_record_with_final_answer
+from server_modules.models import add_new_record, update_record_with_answers
 from server_modules.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse, UploadResponse, ChatHistoryResponse
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
@@ -270,8 +270,9 @@ def submit_final_answer() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
+    original_answer = get_property("originalAnswer", property_type=dict)
     final_answer = get_property("finalAnswer", property_type=dict)
-    update_record_with_final_answer(session_id, final_answer)
+    update_record_with_answers(session_id=session_id, original_answer=original_answer, final_answer=final_answer)
     response_message = ResponseMessage(message="Final answer successfully submitted!", error="")
     return make_response(response_message, 200)
 

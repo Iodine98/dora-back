@@ -24,17 +24,19 @@ class FinalAnswerModel(Base):
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     number_of_messages = Column(Integer, default=-1)
+    original_answer = Column(JSON)
     final_answer = Column(JSON)
 
     def __repr__(self) -> str:
-        return f"FinalAnswer(session_id={self.session_id}, final_answer={json.dumps(self.final_answer)}, start_time={self.start_time}, end_time={self.end_time})"
+        return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)} final_answer={json.dumps(self.final_answer)}, start_time={self.start_time}, end_time={self.end_time})"
     
 def add_new_record(new_session_id: str) -> None:
     db_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
     FinalAnswerModel.metadata.create_all(db_engine) # CREATE TABLE IF NOT EXISTS final_answer
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(FinalAnswerModel.session_id == new_session_id) # SELECT * FROM final_answer WHERE session_id = session_id
-    insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(session_id=new_session_id, start_time=sqlalchemy.func.now())
-    update_stmt = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == new_session_id).values(start_time=sqlalchemy.func.now(), final_answer={}, end_time=None, number_of_messages=-1) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer
+    insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(session_id=new_session_id, start_time=sqlalchemy.func.now()) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, start_time)
+    update_stmt = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == new_session_id).values(start_time=sqlalchemy.func.now(), final_answer={}, original_answer={}, end_time=None, number_of_messages=-1) 
+    
     with db_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
@@ -43,7 +45,7 @@ def add_new_record(new_session_id: str) -> None:
             connection.execute(update_stmt)
         connection.commit()
 
-def update_record_with_final_answer(session_id: str, final_answer: dict) -> None:
+def update_record_with_answers(session_id: str, original_answer: dict, final_answer: dict) -> None:
     db_final_answer_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(FinalAnswerModel.session_id == session_id) # SELECT * FROM final_answer WHERE session_id = session_id
     update_stmt = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == session_id).values(final_answer=final_answer, end_time=sqlalchemy.func.now()) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
