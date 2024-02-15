@@ -81,4 +81,4 @@ COPY . /app
 EXPOSE 5000
 
 # Execute Flask server on starting container
-CMD ["gunicorn", "main:server"]
+CMD ["gunicorn", "app:app"]
