@@ -137,6 +137,13 @@ def set_post_options() -> Response:
     response.headers["Access-Control-Allow-Methods"] = "POST"
     return response
 
+@app.route("/", methods=["GET"])
+def root() -> Response:
+    """
+    Returns a generic welcome for Gunicorn to load
+    """
+    return make_response("<h1>Welcome to our server !!</h1>", 200)
+
 
 @app.route("/identify", methods=["GET"])
 def identify() -> Response:
@@ -319,7 +326,6 @@ def submit_final_answer() -> Response:
     )
     return make_response(response_message, 200)
 
-
-# if __name__ == "__main__":
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    # Threaded option to enable multiple instances for multiple user access support
+    app.run(threaded=True, port=5000)
