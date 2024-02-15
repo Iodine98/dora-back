@@ -14,13 +14,13 @@ class SecondBase(DeclarativeBase):
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
     id = Column(Integer, primary_key=True)
-    session_id = Column(String)
-    message = Column(String)
+    session_id = Column(String(36))
+    message = Column(JSON)
 
 
 class FinalAnswerModel(Base):
     __tablename__ = "final_answer"
-    session_id = Column(String, primary_key=True)
+    session_id = Column(String(36), primary_key=True)
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     number_of_messages = Column(Integer, default=-1)
