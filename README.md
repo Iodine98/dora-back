@@ -42,7 +42,13 @@ Make sure to set all the environment variables like:
 - `SENTENCE_TRANSFORMERS_HOME`: the folder path to store LOCAL embedding models in.
 - `CHAT_HISTORY_CONNECTION_STRING`: an SQL-connection string pointing towards a SQL-DB where chat history can be stored in. The schema will automatically be created in the database mentioned in the SQL-connection string.
 - `LOGGING_FILE_PATH`: a file path where the logging files will be stored.
-
+- `MARIADB_USER`: the user name to access the MariaDB instance with for CRUD operations
+- `MARIADB_ROOT_PASSWORD`: the root password for the MariaDB instance
+- `MARIADB_PASSWORD`: the password belonging to `MARIADB_USER`
+- `MARIADB_INSTANCE_URL`: the URI for SQLAlchemy pointing to the MariaDB instance; it is of this format:
+```uri
+mariadb+mariadbconnector://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
+```
 Then run `poetry run flask --app server run`
 
 ### Run the Streamlit app
@@ -91,3 +97,6 @@ SELECT TOP(5) FROM final_answer;
 ```sql
 SELECT TOP(5) FROM chat_history;
 ```
+
+### `init.sql`
+The purpose of this file is to set grant privileges to the user `main`. I have not figured out how to parameterize this.
