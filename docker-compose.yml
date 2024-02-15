@@ -5,6 +5,8 @@ services:
     image: mariadb:latest
     expose:
       - "3306"
+    ports:
+      - "3306:3306"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     #   - ${MARIADB_HOST_PATH}:${MARIADB_CONTAINER_PATH} # Add mapping to store DB files on permanent storage

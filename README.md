@@ -71,3 +71,23 @@ Overriding the default values for the environment variables is optional.
 ## Removing CORS and connecting to remote Vector DB
 To be able to remove the CORS wrapper and connect to a remote vector database, set the `CURRENT_ENV` variable to `PROD`.
 
+## Query the MariaDB 
+1. Log in to the MariaDB instance:
+```bash
+docker exec -it ${CONTAINER_NAME} mariadb -u ${MARIADB_USER} -D final_answer -p \
+${MARIADB_PASSWORD}
+```
+2. Run the following SQL-statement for the top-5 final answers:
+```sql
+SELECT TOP(5) FROM final_answer;
+```
+
+3. To switch to the `chat_history` database:
+```bash
+\u chat_history
+```
+
+4. To view the top-5 chat-history items:
+```sql
+SELECT TOP(5) FROM chat_history;
+```
