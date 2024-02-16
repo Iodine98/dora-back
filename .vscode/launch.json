@@ -36,7 +36,7 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "server.py",
+                "FLASK_APP": "app.py",
                 "FLASK_DEBUG": "1"
             },
             "args": [
@@ -45,7 +45,7 @@
                 "--no-reload"
             ],
             "jinja": false,
-            "justMyCode": false
+            "justMyCode": true
         }
     ]
 }
