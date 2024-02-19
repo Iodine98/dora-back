@@ -74,6 +74,8 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
+    elif (json_payload := cast(dict, request.json)) is not None and property_name in json_payload:
+        property_value = json_payload[property_name]
     elif with_error:
         raise ValueError(f"No {property_name} found in request.form or session")
     if issubclass(property_type, Basic):
@@ -137,6 +139,7 @@ def set_post_options() -> Response:
     response.headers["Access-Control-Allow-Methods"] = "POST"
     return response
 
+
 @app.route("/", methods=["GET"])
 def root() -> Response:
     """
@@ -174,6 +177,52 @@ def identify() -> Response:
     add_new_record(identity["sessionId"])
     session.update(identity)
     response = make_response(identify_response, 200)
+    return response
+
+
+@app.route("/upload_files_json", methods=["POST"])
+async def upload_files_json() -> Response:
+    """
+    Uploads files to the server.
+
+    Returns:
+        str: Success message indicating the number of files uploaded.
+        tuple: Error message and status code if user is not authenticated.
+    """
+    session_id: str = str(get_property("sessionId"))
+    json_payload = cast(dict, request.json)
+
+    def get_prefix() -> str:
+        if "prefix" in json_payload:
+            return str(json_payload["prefix"])
+        else:
+            raise ValueError("No prefix found in request.json")
+
+    def get_files() -> dict:
+        return {
+            k.lstrip(prefix): v for k, v in json_payload.items() if k.startswith(prefix)
+        }
+
+    prefix: str = get_prefix()
+    files = get_files()
+
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
+    time.sleep(1)
+    external_file_id_mapping = {
+        original_names_dict[filename]: document_ids
+        for filename, document_ids in internal_file_id_mapping.items()
+    }
+    response_message = UploadResponse(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+        error="",
+        fileIdMapping=external_file_id_mapping,
+    )
+    response = make_response(response_message, 200)
     return response
 
 
@@ -326,6 +375,7 @@ def submit_final_answer() -> Response:
     )
     return make_response(response_message, 200)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Threaded option to enable multiple instances for multiple user access support
     app.run(threaded=True, port=5000)
