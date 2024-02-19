@@ -74,7 +74,9 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
-    elif (json_payload := cast(dict, request.json)) is not None and property_name in json_payload:
+    elif (
+        json_payload := cast(dict, request.json)
+    ) is not None and property_name in json_payload:
         property_value = json_payload[property_name]
     elif with_error:
         raise ValueError(f"No {property_name} found in request.form or session")
@@ -189,22 +191,26 @@ async def upload_files_json() -> Response:
         str: Success message indicating the number of files uploaded.
         tuple: Error message and status code if user is not authenticated.
     """
-    session_id: str = str(get_property("sessionId"))
-    json_payload = cast(dict, request.json)
 
     def get_prefix() -> str:
-        if "prefix" in json_payload:
-            return str(json_payload["prefix"])
+        if "prefix" in file_dict:
+            return str(file_dict["prefix"])
         else:
-            raise ValueError("No prefix found in request.json")
+            raise ValueError("No prefix found in file object in request.json")
 
     def get_files() -> dict:
-        return {
-            k.lstrip(prefix): v for k, v in json_payload.items() if k.startswith(prefix)
-        }
+        files_in_dict = {}
+        for k, v in file_dict.items():
+            if k.startswith(prefix):
+                files_in_dict[v.filename] = v
+        return files_in_dict
 
-    prefix: str = get_prefix()
-    files = get_files()
+    session_id: str = str(get_property("sessionId"))
+    json_payload = cast(list, request.json)
+    files = {}
+    for file_dict in json_payload:
+        prefix: str = get_prefix()
+        files = {**files, **get_files()}
 
     original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
         files, session_id=session_id
