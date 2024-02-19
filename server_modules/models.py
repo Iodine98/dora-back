@@ -5,11 +5,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from chatdoc.utils import Utils
 
+
 class Base(DeclarativeBase):
     __abstract__ = True
 
+
 class SecondBase(DeclarativeBase):
     __abstract__ = True
+
 
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
@@ -29,14 +32,33 @@ class FinalAnswerModel(Base):
 
     def __repr__(self) -> str:
         return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)} final_answer={json.dumps(self.final_answer)}, start_time={self.start_time}, end_time={self.end_time})"
-    
+
+
 def add_new_record(new_session_id: str) -> None:
-    db_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
-    FinalAnswerModel.metadata.create_all(db_engine) # CREATE TABLE IF NOT EXISTS final_answer
-    answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(FinalAnswerModel.session_id == new_session_id) # SELECT * FROM final_answer WHERE session_id = session_id
-    insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(session_id=new_session_id, start_time=sqlalchemy.func.now()) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, start_time)
-    update_stmt = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == new_session_id).values(start_time=sqlalchemy.func.now(), final_answer={}, original_answer={}, end_time=None, number_of_messages=-1) 
-    
+    db_engine = sqlalchemy.create_engine(
+        Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+    )
+    FinalAnswerModel.metadata.create_all(
+        db_engine
+    )  # CREATE TABLE IF NOT EXISTS final_answer
+    answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
+        FinalAnswerModel.session_id == new_session_id
+    )  # SELECT * FROM final_answer WHERE session_id = session_id
+    insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(
+        session_id=new_session_id, start_time=sqlalchemy.func.now()
+    )  # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, start_time)
+    update_stmt = (
+        sqlalchemy.update(FinalAnswerModel)
+        .where(FinalAnswerModel.session_id == new_session_id)
+        .values(
+            start_time=sqlalchemy.func.now(),
+            final_answer={},
+            original_answer={},
+            end_time=None,
+            number_of_messages=-1,
+        )
+    )
+
     with db_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
@@ -45,25 +67,46 @@ def add_new_record(new_session_id: str) -> None:
             connection.execute(update_stmt)
         connection.commit()
 
-def update_record_with_answers(session_id: str, original_answer: dict, final_answer: dict) -> None:
-    db_final_answer_engine = sqlalchemy.create_engine(Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"))
-    answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(FinalAnswerModel.session_id == session_id) # SELECT * FROM final_answer WHERE session_id = session_id
-    update_stmt = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == session_id).values(final_answer=final_answer, end_time=sqlalchemy.func.now()) # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
+
+def update_record_with_answers(
+    session_id: str, original_answer: dict, final_answer: dict
+) -> None:
+    db_final_answer_engine = sqlalchemy.create_engine(
+        Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+    )
+    answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
+        FinalAnswerModel.session_id == session_id
+    )  # SELECT * FROM final_answer WHERE session_id = session_id
+    update_stmt = (
+        sqlalchemy.update(FinalAnswerModel)
+        .where(FinalAnswerModel.session_id == session_id)
+        .values(
+            final_answer=final_answer,
+            original_answer=original_answer,
+            end_time=sqlalchemy.func.now(),
+        )
+    )  # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
     with db_final_answer_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
             raise ValueError(f"No record found for session_id: {session_id}")
         connection.execute(update_stmt)
         connection.commit()
-    db_chat_history_engine = sqlalchemy.create_engine(Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
-    count_stmt = sqlalchemy.select(sqlalchemy.func.count(ChatHistoryModel.id)).where(ChatHistoryModel.session_id == session_id)
+    db_chat_history_engine = sqlalchemy.create_engine(
+        Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+    )
+    count_stmt = sqlalchemy.select(sqlalchemy.func.count(ChatHistoryModel.id)).where(
+        ChatHistoryModel.session_id == session_id
+    )
     with db_chat_history_engine.connect() as connection:
         number_of_messages = connection.execute(count_stmt).scalar()
         if number_of_messages is None:
             raise ValueError(f"No chat history found for session_id: {session_id}")
-    update_message_count = sqlalchemy.update(FinalAnswerModel).where(FinalAnswerModel.session_id == session_id).values(number_of_messages=number_of_messages)
+    update_message_count = (
+        sqlalchemy.update(FinalAnswerModel)
+        .where(FinalAnswerModel.session_id == session_id)
+        .values(number_of_messages=number_of_messages)
+    )
     with db_final_answer_engine.connect() as connection:
         connection.execute(update_message_count)
         connection.commit()
-
-
