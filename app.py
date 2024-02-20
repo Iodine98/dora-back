@@ -1,4 +1,6 @@
 # system imports
+import base64
+import io
 import os
 import time
 import uuid
@@ -21,11 +23,13 @@ from server_modules.class_defs import (
     PromptResponse,
     UploadResponse,
     ChatHistoryResponse,
+    WEMUploadResponse,
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
+from werkzeug.datastructures import FileStorage
 
 set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
@@ -86,7 +90,7 @@ def get_property(
                 if with_error:
                     raise ValueError(f"No {property_name} found in request.json")
     elif with_error:
-        raise ValueError(f"No {property_name} found in request.form or session")
+        raise ValueError(f"No {property_name} found in request.form, session, or request.json")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -207,17 +211,25 @@ async def upload_files_json() -> Response:
 
     def get_files() -> dict:
         files_in_dict = {}
+        file_name: str | None = None
         for k, v in file_dict.items():
             if k.startswith(prefix):
-                files_in_dict[v.filename] = v
+                file_name = file_dict["filename"] if file_name is None else file_name
+                decoded_data = base64.b64decode(v)
+                file_storage = FileStorage(stream=io.BytesIO(decoded_data))
+                files_in_dict[file_name] = file_storage
         return files_in_dict
 
-    session_id: str = str(get_property("sessionId"))
     json_payload = cast(list, request.json)
     files = {}
+    session_id: str | None = None
     for file_dict in json_payload:
+        session_id = file_dict["sessionId"] if session_id is None else session_id
         prefix: str = get_prefix()
         files = {**files, **get_files()}
+
+    if session_id is None:
+        raise ValueError("No session ID found in request.json")
 
     original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
         files, session_id=session_id
@@ -226,11 +238,11 @@ async def upload_files_json() -> Response:
         full_document_dict, user_id=session_id
     )
     time.sleep(1)
-    external_file_id_mapping = {
-        original_names_dict[filename]: document_ids
-        for filename, document_ids in internal_file_id_mapping.items()
-    }
-    response_message = UploadResponse(
+    external_file_id_mapping = [{
+        "filename": original_names_dict[filename],
+        "documentIds": document_ids
+    } for filename, document_ids in internal_file_id_mapping.items()]
+    response_message = WEMUploadResponse(
         message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
         error="",
         fileIdMapping=external_file_id_mapping,
