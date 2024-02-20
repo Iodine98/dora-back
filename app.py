@@ -332,10 +332,7 @@ def prompt() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    if request.form is None:
-        return make_response({"error": "No form data received"}, 400)
-    message = request.form["prompt"]
-    chatbot = Chatbot(user_id=session_id)
+    message = str(get_property("prompt"))
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.",
