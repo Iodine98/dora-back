@@ -74,10 +74,17 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
-    elif (
-        json_payload := cast(dict, request.json)
-    ) is not None and property_name in json_payload:
-        property_value = json_payload[property_name]
+    elif (json_payload := request.json) is not None:
+        if isinstance(json_payload, dict) and property_name in json_payload:
+            property_value = json_payload[property_name]
+        elif isinstance(json_payload, list):
+            for item in json_payload:
+                if isinstance(item, dict) and property_name in item:
+                    property_value = item[property_name]
+                    break
+            else:
+                if with_error:
+                    raise ValueError(f"No {property_name} found in request.json")
     elif with_error:
         raise ValueError(f"No {property_name} found in request.form or session")
     if issubclass(property_type, Basic):
