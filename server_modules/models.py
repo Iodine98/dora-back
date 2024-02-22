@@ -24,6 +24,7 @@ class FinalAnswerModel(Base):
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     number_of_messages = Column(Integer, default=-1)
+    original_answer = Column(JSON)
     final_answer = Column(JSON)
 
     def __repr__(self) -> str:
