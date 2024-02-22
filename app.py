@@ -1,7 +1,6 @@
 # system imports
 import base64
 import io
-import os
 import time
 import uuid
 import json
@@ -15,7 +14,7 @@ from flask_cors import CORS
 # local imports
 from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
-from server_modules.models import add_new_record, update_record_with_final_answer
+from server_modules.models import add_new_record, update_record_with_answers
 from server_modules.class_defs import (
     IdentifyResponse,
     Identity,
@@ -90,7 +89,9 @@ def get_property(
                 if with_error:
                     raise ValueError(f"No {property_name} found in request.json")
     elif with_error:
-        raise ValueError(f"No {property_name} found in request.form, session, or request.json")
+        raise ValueError(
+            f"No {property_name} found in request.form, session, or request.json"
+        )
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -238,10 +239,10 @@ async def upload_files_json() -> Response:
         full_document_dict, user_id=session_id
     )
     time.sleep(1)
-    external_file_id_mapping = [{
-        "filename": original_names_dict[filename],
-        "documentIds": document_ids
-    } for filename, document_ids in internal_file_id_mapping.items()]
+    external_file_id_mapping = [
+        {"filename": original_names_dict[filename], "documentIds": document_ids}
+        for filename, document_ids in internal_file_id_mapping.items()
+    ]
     response_message = WEMUploadResponse(
         message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
         error="",
@@ -390,8 +391,11 @@ def submit_final_answer() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    final_answer = get_property("finalAnswer", property_type=dict)
-    update_record_with_final_answer(session_id, final_answer)
+    original_answer = get_property("originalAnswer", property_type=dict)
+    edited_answer = get_property("editedAnswer", property_type=dict)
+    update_record_with_answers(
+        session_id, original_answer=original_answer, edited_answer=edited_answer
+    )
     response_message = ResponseMessage(
         message="Final answer successfully submitted!", error=""
     )
