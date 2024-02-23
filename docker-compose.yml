@@ -30,7 +30,7 @@ services:
       FINAL_ANSWER_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/final_answer
       FLASK_APP: ./app.py
     volumes:
-      - ${LOG_DIR}:/app/logs
+      - ${LOGGING_FILE_PATH}:/app/logs
       # - chat_model_folder_path:/models/chat_models
       # - embedding_model_folder_path:/models/embedding_models
     depends_on:
