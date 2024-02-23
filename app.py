@@ -1,5 +1,6 @@
 # system imports
-import os
+import base64
+import io
 import time
 import uuid
 import json
@@ -13,7 +14,7 @@ from flask_cors import CORS
 # local imports
 from server_modules import set_logging_config
 from server_modules.methods import ServerMethods
-from server_modules.models import add_new_record, update_record_with_final_answer
+from server_modules.models import add_new_record, update_record_with_answers
 from server_modules.class_defs import (
     IdentifyResponse,
     Identity,
@@ -21,11 +22,13 @@ from server_modules.class_defs import (
     PromptResponse,
     UploadResponse,
     ChatHistoryResponse,
+    WEMUploadResponse,
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
+from werkzeug.datastructures import FileStorage
 
 set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
@@ -74,8 +77,21 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
+    elif (json_payload := request.json) is not None:
+        if isinstance(json_payload, dict) and property_name in json_payload:
+            property_value = json_payload[property_name]
+        elif isinstance(json_payload, list):
+            for item in json_payload:
+                if isinstance(item, dict) and property_name in item:
+                    property_value = item[property_name]
+                    break
+            else:
+                if with_error:
+                    raise ValueError(f"No {property_name} found in request.json")
     elif with_error:
-        raise ValueError(f"No {property_name} found in request.form or session")
+        raise ValueError(
+            f"No {property_name} found in request.form, session, or request.json"
+        )
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -137,6 +153,7 @@ def set_post_options() -> Response:
     response.headers["Access-Control-Allow-Methods"] = "POST"
     return response
 
+
 @app.route("/", methods=["GET"])
 def root() -> Response:
     """
@@ -174,6 +191,64 @@ def identify() -> Response:
     add_new_record(identity["sessionId"])
     session.update(identity)
     response = make_response(identify_response, 200)
+    return response
+
+
+@app.route("/upload_files_json", methods=["POST"])
+async def upload_files_json() -> Response:
+    """
+    Uploads files to the server.
+
+    Returns:
+        str: Success message indicating the number of files uploaded.
+        tuple: Error message and status code if user is not authenticated.
+    """
+
+    def get_prefix() -> str:
+        if "prefix" in file_dict:
+            return str(file_dict["prefix"])
+        else:
+            raise ValueError("No prefix found in file object in request.json")
+
+    def get_files() -> dict:
+        files_in_dict = {}
+        file_name: str | None = None
+        for k, v in file_dict.items():
+            if k.startswith(prefix):
+                file_name = file_dict["filename"] if file_name is None else file_name
+                decoded_data = base64.b64decode(v)
+                file_storage = FileStorage(stream=io.BytesIO(decoded_data))
+                files_in_dict[file_name] = file_storage
+        return files_in_dict
+
+    json_payload = cast(list, request.json)
+    files = {}
+    session_id: str | None = None
+    for file_dict in json_payload:
+        session_id = file_dict["sessionId"] if session_id is None else session_id
+        prefix: str = get_prefix()
+        files = {**files, **get_files()}
+
+    if session_id is None:
+        raise ValueError("No session ID found in request.json")
+
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
+    time.sleep(1)
+    external_file_id_mapping = [
+        {"filename": original_names_dict[filename], "documentIds": document_ids}
+        for filename, document_ids in internal_file_id_mapping.items()
+    ]
+    response_message = WEMUploadResponse(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+        error="",
+        fileIdMapping=external_file_id_mapping,
+    )
+    response = make_response(response_message, 200)
     return response
 
 
@@ -258,10 +333,7 @@ def prompt() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    if request.form is None:
-        return make_response({"error": "No form data received"}, 400)
-    message = request.form["prompt"]
-    chatbot = Chatbot(user_id=session_id)
+    message = str(get_property("prompt"))
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.",
@@ -319,13 +391,17 @@ def submit_final_answer() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    final_answer = get_property("finalAnswer", property_type=dict)
-    update_record_with_final_answer(session_id, final_answer)
+    original_answer = get_property("originalAnswer", property_type=dict)
+    edited_answer = get_property("editedAnswer", property_type=dict)
+    update_record_with_answers(
+        session_id, original_answer=original_answer, edited_answer=edited_answer
+    )
     response_message = ResponseMessage(
         message="Final answer successfully submitted!", error=""
     )
     return make_response(response_message, 200)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Threaded option to enable multiple instances for multiple user access support
     app.run(threaded=True, port=5000)

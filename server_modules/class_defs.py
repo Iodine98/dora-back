@@ -34,6 +34,12 @@ class IdentifyResponse(ResponseMessage, Identity):
     Represents a response for identity identification.
     """
 
+class WEMUploadResponse(ResponseMessage):
+    """
+    Represents a response for uploading files from WEM.
+    """
+
+    fileIdMapping: list[dict[str, str | list[str]]]
 
 class UploadResponse(ResponseMessage):
     """
