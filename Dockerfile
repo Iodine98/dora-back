@@ -28,9 +28,27 @@ RUN poetry config installer.max-workers 10
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install -vvv --without dev --no-root
 
 #-----------------------------------------------------------------------------------
+## Install MariaDB Connector/C
+
+FROM ubuntu:22.04 as mariadb-connector-c
+
+
+RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget curl gnupg
+RUN wget https://r.mariadb.com/downloads/mariadb_repo_setup
+RUN chmod +x mariadb_repo_setup
+RUN ./mariadb_repo_setup --mariadb-server-version="mariadb-10.6"
+RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y libmariadb3 libmariadb-dev
+
+#-----------------------------------------------------------------------------------
 
 ## Runtime Image
 FROM  python:3.11.7 as runtime
+
+# Keeps Python from generating .pyc files in the container
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Turns off buffering for easier container logging
+ENV PYTHONUNBUFFERED=1
 
 # Set working directory
 WORKDIR /app
@@ -77,6 +95,10 @@ ENV VIRTUAL_ENV=/app/.venv \
 
 # Copy the virtual environment from the builder
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+
+# # Copy MariaDB Connector/C
+COPY --from=mariadb-connector-c /etc/apt/sources.list.d/mariadb.list /etc/apt/sources.list.d/mariadb.list
+
 
 
 # Copy current contents of folder to app directory

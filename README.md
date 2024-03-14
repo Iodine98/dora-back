@@ -42,7 +42,13 @@ Make sure to set all the environment variables like:
 - `SENTENCE_TRANSFORMERS_HOME`: the folder path to store LOCAL embedding models in.
 - `CHAT_HISTORY_CONNECTION_STRING`: an SQL-connection string pointing towards a SQL-DB where chat history can be stored in. The schema will automatically be created in the database mentioned in the SQL-connection string.
 - `LOGGING_FILE_PATH`: a file path where the logging files will be stored.
-
+- `MARIADB_USER`: the user name to access the MariaDB instance with for CRUD operations
+- `MARIADB_ROOT_PASSWORD`: the root password for the MariaDB instance
+- `MARIADB_PASSWORD`: the password belonging to `MARIADB_USER`
+- `MARIADB_INSTANCE_URL`: the URI for SQLAlchemy pointing to the MariaDB instance; it is of this format:
+```uri
+mariadb+mariadbconnector://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
+```
 Then run `poetry run flask --app server run`
 
 ### Run the Streamlit app
@@ -71,3 +77,26 @@ Overriding the default values for the environment variables is optional.
 ## Removing CORS and connecting to remote Vector DB
 To be able to remove the CORS wrapper and connect to a remote vector database, set the `CURRENT_ENV` variable to `PROD`.
 
+## Query the MariaDB 
+1. Log in to the MariaDB instance:
+```bash
+docker exec -it ${CONTAINER_NAME} mariadb -u ${MARIADB_USER} -D final_answer -p \
+${MARIADB_PASSWORD}
+```
+2. Run the following SQL-statement for the top-5 final answers:
+```sql
+SELECT TOP(5) FROM final_answer;
+```
+
+3. To switch to the `chat_history` database:
+```bash
+\u chat_history
+```
+
+4. To view the top-5 chat-history items:
+```sql
+SELECT TOP(5) FROM chat_history;
+```
+
+### `init.sql`
+The purpose of this file is to set grant privileges to the user `main`. I have not figured out how to parameterize this.

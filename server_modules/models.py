@@ -5,25 +5,22 @@ from sqlalchemy.orm import DeclarativeBase
 
 from chatdoc.utils import Utils
 
-
 class Base(DeclarativeBase):
     __abstract__ = True
-
 
 class SecondBase(DeclarativeBase):
     __abstract__ = True
 
-
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
     id = Column(Integer, primary_key=True)
-    session_id = Column(String)
-    message = Column(String)
+    session_id = Column(String(36))
+    message = Column(JSON)
 
 
 class FinalAnswerModel(Base):
     __tablename__ = "final_answer"
-    session_id = Column(String, primary_key=True)
+    session_id = Column(String(36), primary_key=True)
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     number_of_messages = Column(Integer, default=-1)
@@ -116,3 +113,5 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         connection.execute(update_message_count)
         connection.commit()
+
+
