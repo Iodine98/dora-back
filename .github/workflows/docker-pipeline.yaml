@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HTTP_PROXY: "http://134.209.28.98:3128"
+      HTTP_PROXY: "http://79.106.170.34:8989"
     steps:
       - name: Show HTTP_PROXY
         run: echo $HTTP_PROXY
