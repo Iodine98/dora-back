@@ -402,6 +402,20 @@ def submit_final_answer() -> Response:
     return make_response(response_message, 200)
 
 
+@app.route("/clock-out-cg", methods=["POST"])
+def clock_out_cg() -> Response:
+    """
+    This function registers the end time of the experiment for the control group
+    """
+    session_id = str(get_property("sessionId"))
+    edited_answer = get_property("editedAnswer", property_type=dict)
+    update_record_with_answers(session_id, original_answer={}, edited_answer=edited_answer)
+    response_message = ResponseMessage(
+        message="Control Group member has been clocked out successfully!", error=""
+    )
+    return make_response(response_message, 200)
+
+
 if __name__ == "__main__":
     # Threaded option to enable multiple instances for multiple user access support
     app.run(threaded=True, port=5000)
