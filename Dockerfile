@@ -34,7 +34,7 @@ FROM ubuntu:22.04 as mariadb-connector-c
 
 
 RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget curl gnupg
-RUN wget -e http_proxy=${HTTP_PROXY} https://r.mariadb.com/downloads/mariadb_repo_setup
+RUN wget -e use_proxy=yes -e http_proxy=${HTTP_PROXY} https://r.mariadb.com/downloads/mariadb_repo_setup
 RUN chmod +x mariadb_repo_setup
 RUN ./mariadb_repo_setup --mariadb-server-version="mariadb-10.6"
 RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y libmariadb3 libmariadb-dev
