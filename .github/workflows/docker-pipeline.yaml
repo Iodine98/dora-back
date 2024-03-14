@@ -21,11 +21,6 @@ jobs:
           context: .
           push: false
           tags: dora-backend:latest
-          build-args: |
-            http_proxy=${{ env.HTTP_PROXY }}
-            https_proxy=${{ env.HTTP_PROXY }}
-            HTTP_PROXY=${{ env.HTTP_PROXY }}
-            HTTPS_PROXY=${{ env.HTTP_PROXY }}
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
