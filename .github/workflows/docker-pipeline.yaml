@@ -6,11 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      HTTP_PROXY: "http://156.226.243.199:3128"
     steps:
-      - name: Show HTTP_PROXY
-        run: echo $HTTP_PROXY
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Set up Docker Buildx
