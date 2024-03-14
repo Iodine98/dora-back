@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy poetry.lock and pyproject.toml
 COPY pyproject.toml /app/
 
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
 # Set Poetry environment variables
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
@@ -14,9 +17,11 @@ ENV POETRY_HOME="/opt/poetry" \
     POETRY_VERSION=1.5.0 \
     POETRY_CACHE_DIR="/tmp/poetry_cache"
 ENV PATH="$PATH:$POETRY_HOME/bin"
+ENV HTTP_PROXY=$HTTP_PROXY
 
 # Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN pip config set global.proxy ${HTTP_PROXY}
+RUN pip install poetry
 
 # Install necessary dependencies
 RUN poetry config installer.max-workers 10
@@ -77,8 +82,8 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 # Copy current contents of folder to app directory
 COPY . /app
 
-# Enable port 5000
-EXPOSE 5000
+# Enable port 8000 
+EXPOSE 8000
 
 # Execute Flask server on starting container
-CMD ["gunicorn", "app:app"]
+CMD ["gunicorn", "-w", "2", "--threads", "2", "-b", "0.0.0.0:8000", "app:app"]

@@ -167,3 +167,5 @@ models/*
 azure_chat_models.json
 /models/*
 *.db
+kubernetes.yaml
+kubernetes.yml
