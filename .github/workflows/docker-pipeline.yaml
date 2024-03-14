@@ -22,6 +22,8 @@ jobs:
           push: false
           tags: dora-backend:latest
           build-args: |
+            http_proxy=$HTTP_PROXY
+            https_proxy=$HTTP_PROXY
             HTTP_PROXY=$HTTP_PROXY
             HTTPS_PROXY=$HTTP_PROXY
           outputs: type=docker, dest=/tmp/dora-backend.tar
