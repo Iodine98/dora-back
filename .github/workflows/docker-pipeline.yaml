@@ -17,7 +17,7 @@ jobs:
           context: .
           push: false
           tags: dora-backend:latest
-          file: {context}/Docker_without_Proxy
+          file: "{context}/Docker_without_Proxy"
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
