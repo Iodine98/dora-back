@@ -1,7 +1,0 @@
-CREATE DATABASE IF NOT EXISTS chat_history;
-GRANT ALL PRIVILEGES ON chat_history.* TO 'main'@'%';
-
-CREATE DATABASE IF NOT EXISTS final_answer;
-GRANT ALL PRIVILEGES ON final_answer.* TO 'main'@'%';
-
-FLUSH PRIVILEGES;
