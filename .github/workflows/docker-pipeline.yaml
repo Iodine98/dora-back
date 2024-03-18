@@ -6,8 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      HTTP_PROXY: "http://134.209.28.98:3128"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -19,9 +17,7 @@ jobs:
           context: .
           push: false
           tags: dora-backend:latest
-          build-args:
-            - HTTP_PROXY=$HTTP_PROXY
-            - HTTPS_PROXY=$HTTP_PROXY
+          file: {context}/Docker_without_Proxy
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
