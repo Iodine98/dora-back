@@ -17,7 +17,6 @@ jobs:
           context: .
           push: false
           tags: dora-backend:latest
-          file: "{context}/Docker_without_Proxy"
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
@@ -45,7 +44,7 @@ jobs:
       - name: Docker Compose Config
         run: |
           docker compose config -o docker-compose-filled.yml
-      - name: Run Docker Compose        
+      - name: Run Docker Compose
         uses: isbang/compose-action@v1.5.1
         with:
           compose-file: docker-compose-filled.yml
@@ -55,4 +54,4 @@ jobs:
           docker ps -a
       - name: Stop Docker Compose
         run: |
-          docker-compose down     
+          docker-compose down
