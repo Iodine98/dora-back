@@ -49,9 +49,7 @@ jobs:
         with:
           compose-file: docker-compose-filled.yml
           up-flags: "--detach"
+          down-flags: "--timeout 30"
       - name: Check Running Containers
         run: |
           docker ps -a
-      - name: Stop Docker Compose
-        run: |
-          docker-compose down
