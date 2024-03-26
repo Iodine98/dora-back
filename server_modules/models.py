@@ -35,10 +35,11 @@ class FinalAnswerModel(Base):
         return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)}, edited_answer={json.dumps(self.edited_answer)}, start_time={self.start_time}, end_time={self.end_time})"
 
 
-def add_new_record(new_session_id: str) -> None:
+def add_new_record(new_session_id: str, logger: logging.Logger) -> None:
     """
     Add a new record to the final_answer table when the user starts a new session
     """
+    logger.info(f"Adding new record for session id: {new_session_id}")
     db_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
@@ -95,9 +96,7 @@ def update_record_with_answers(
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
-        logger.info(f"Executing query: {str(answer_model_record_query)}")
         answer_model_record = connection.execute(answer_model_record_query)
-        logger.info(f"Answer model record: {answer_model_record} vs {session_id}")
         if not answer_model_record.fetchone():
           raise ValueError(f"No record found for session_id: {session_id}")
         connection.execute(update_stmt)
