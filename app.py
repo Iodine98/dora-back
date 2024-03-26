@@ -80,7 +80,9 @@ def get_property(
     elif (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
             property_value = json_payload[property_name]
+            app.logger.info(f"Property name: {property_name}")
             app.logger.info(f"Property value type: {type(property_value)}")
+            app.logger.info(f"Property value: {property_value}")
         elif isinstance(json_payload, list):
             for item in json_payload:
                 if isinstance(item, dict) and property_name in item:
