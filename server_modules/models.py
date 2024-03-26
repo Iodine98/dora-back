@@ -6,11 +6,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from chatdoc.utils import Utils
 
+
 class Base(DeclarativeBase):
     __abstract__ = True
 
+
 class SecondBase(DeclarativeBase):
     __abstract__ = True
+
 
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
@@ -81,11 +84,11 @@ def update_record_with_answers(
     logger.info(f"Updating final answer for session_id: {session_id}")
     logger.info(f"Session ID is binary string: {isinstance(session_id, bytes)}")
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
-        FinalAnswerModel.session_id == session_id
+        FinalAnswerModel.session_id == str(session_id)
     )  # SELECT * FROM final_answer WHERE session_id = session_id
     update_stmt = (
         sqlalchemy.update(FinalAnswerModel)
-        .where(FinalAnswerModel.session_id == session_id)
+        .where(FinalAnswerModel.session_id == str(session_id))
         .values(
             original_answer=original_answer,
             edited_answer=edited_answer,
@@ -117,5 +120,3 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         connection.execute(update_message_count)
         connection.commit()
-
-
