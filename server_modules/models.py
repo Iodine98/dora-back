@@ -84,8 +84,8 @@ def update_record_with_answers(
         sqlalchemy.update(FinalAnswerModel)
         .where(FinalAnswerModel.session_id == session_id)
         .values(
-            original_answer=json.dumps(original_answer),
-            edited_answer=json.dumps(edited_answer),
+            original_answer=original_answer,
+            edited_answer=edited_answer,
             end_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id

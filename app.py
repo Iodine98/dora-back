@@ -79,11 +79,11 @@ def get_property(
         property_value = request.form[property_name]
     elif (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
-            property_value = json_payload[property_name]
+            property_value = json.dumps(json_payload[property_name])
         elif isinstance(json_payload, list):
             for item in json_payload:
                 if isinstance(item, dict) and property_name in item:
-                    property_value = item[property_name]
+                    property_value = json.dumps(item[property_name])
                     break
             else:
                 if with_error:
