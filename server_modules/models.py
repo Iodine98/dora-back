@@ -96,8 +96,9 @@ def update_record_with_answers(
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
-        logger.info(f"current session id: {current_session_id}")
-        logger.info(f"type of session id: {type(current_session_id)}")
+        logger.info(
+            f"current session id: {current_session_id.type, current_session_id.value}"
+        )
         logger.info(f"Executing query: {str(answer_model_record_query)}")
         answer_model_record = connection.execute(answer_model_record_query).fetchone()
         logger.info(f"Answer model record: {answer_model_record} vs {session_id}")
