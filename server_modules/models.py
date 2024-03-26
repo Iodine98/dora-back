@@ -93,6 +93,7 @@ def update_record_with_answers(
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
+        logger.info(f"Executing query: {str(answer_model_record_query)}")
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
             raise ValueError(f"No record found for session_id: {session_id}")
