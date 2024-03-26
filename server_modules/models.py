@@ -96,28 +96,28 @@ def update_record_with_answers(
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
-        logger.info(f"Executing query: {str(answer_model_record_query)}")
-        answer_model_record = connection.execute(answer_model_record_query)
-        logger.info(answer_model_record.fetchall())
-        if not answer_model_record.fetchone():
-            raise ValueError(f"No record found for session_id: {session_id}")
-        connection.execute(update_stmt)
-        connection.commit()
-    db_chat_history_engine = sqlalchemy.create_engine(
-        Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
-    )
-    count_stmt = sqlalchemy.select(
-        sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
-    ).where(ChatHistoryModel.session_id == session_id)
-    with db_chat_history_engine.connect() as connection:
-        number_of_messages = connection.execute(count_stmt).scalar()
-        if number_of_messages is None:
-            raise ValueError(f"No chat history found for session_id: {session_id}")
-    update_message_count = (
-        sqlalchemy.update(FinalAnswerModel)
-        .where(FinalAnswerModel.session_id == session_id)
-        .values(number_of_messages=number_of_messages)
-    )
-    with db_final_answer_engine.connect() as connection:
-        connection.execute(update_message_count)
-        connection.commit()
+        logger.info(f"Executing query: {str(sqlalchemy.select(FinalAnswerModel))}")
+        answer_model_record = connection.execute(sqlalchemy.select(FinalAnswerModel)).fetchall()
+        logger.info(f"Answer model record: {answer_model_record}")
+        # if not answer_model_record.fetchone():
+            # raise ValueError(f"No record found for session_id: {session_id}")
+    #     connection.execute(update_stmt)
+    #     connection.commit()
+    # db_chat_history_engine = sqlalchemy.create_engine(
+    #     Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+    # )
+    # count_stmt = sqlalchemy.select(
+    #     sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
+    # ).where(ChatHistoryModel.session_id == session_id)
+    # with db_chat_history_engine.connect() as connection:
+    #     number_of_messages = connection.execute(count_stmt).scalar()
+    #     if number_of_messages is None:
+    #         raise ValueError(f"No chat history found for session_id: {session_id}")
+    # update_message_count = (
+    #     sqlalchemy.update(FinalAnswerModel)
+    #     .where(FinalAnswerModel.session_id == session_id)
+    #     .values(number_of_messages=number_of_messages)
+    # )
+    # with db_final_answer_engine.connect() as connection:
+    #     connection.execute(update_message_count)
+    #     connection.commit()
