@@ -80,9 +80,6 @@ def get_property(
     elif (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
             property_value = json_payload[property_name]
-            app.logger.info(f"Property name: {property_name}")
-            app.logger.info(f"Property value type: {type(property_value)}")
-            app.logger.info(f"Property value: {property_value}")
         elif isinstance(json_payload, list):
             for item in json_payload:
                 if isinstance(item, dict) and property_name in item:
@@ -396,6 +393,10 @@ def submit_final_answer() -> Response:
     session_id = str(get_property("sessionId"))
     original_answer = get_property("originalAnswer", property_type=dict)
     edited_answer = get_property("editedAnswer", property_type=dict)
+    app.logger.info(f"Original answer value type: {type(original_answer)}")
+    app.logger.info(f"Original answer value: {original_answer}")
+    app.logger.info(f"Edited answer value type: {type(edited_answer)}")
+    app.logger.info(f"Edited answer value: {edited_answer}")
     update_record_with_answers(
         session_id, original_answer=original_answer, edited_answer=edited_answer
     )
