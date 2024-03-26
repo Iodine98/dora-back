@@ -97,7 +97,7 @@ def update_record_with_answers(
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
         logger.info(f"Executing query: {str(sqlalchemy.select(FinalAnswerModel))}")
-        answer_model_record = connection.execute(sqlalchemy.select(FinalAnswerModel)).fetchall()
+        answer_model_record = connection.execute(sqlalchemy.select(FinalAnswerModel)).all()
         logger.info(f"Answer model record: {answer_model_record}")
         # if not answer_model_record.fetchone():
             # raise ValueError(f"No record found for session_id: {session_id}")
