@@ -162,7 +162,7 @@ def root() -> Response:
     return make_response("<h1>Welcome to our server !!</h1>", 200)
 
 
-@app.route("/identify", methods=["GET"])
+@app.route("/identify", methods=["POST"])
 def identify() -> Response:
     """
     Identifies the user and returns a response object.
