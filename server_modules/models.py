@@ -82,7 +82,6 @@ def update_record_with_answers(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
     logger.info(f"Updating final answer for session_id: {session_id}")
-    logger.info(f"Session ID is binary string: {isinstance(session_id, bytes)}")
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
         FinalAnswerModel.session_id == str(session_id)
     )  # SELECT * FROM final_answer WHERE session_id = session_id
@@ -96,11 +95,14 @@ def update_record_with_answers(
         )
     )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
-        logger.info(f"Executing query: {str(sqlalchemy.select(FinalAnswerModel))}")
-        answer_model_record = connection.execute(sqlalchemy.select(FinalAnswerModel)).all()
+        temp_var = sqlalchemy.select(FinalAnswerModel).where(
+            FinalAnswerModel.session_id == "b08a1734-555c-4f6f-ae5c-d96749ff748b"
+        )
+        logger.info(f"Executing query: {str(temp_var)}")
+        answer_model_record = connection.execute(temp_var).all()
         logger.info(f"Answer model record: {answer_model_record}")
         # if not answer_model_record.fetchone():
-            # raise ValueError(f"No record found for session_id: {session_id}")
+        # raise ValueError(f"No record found for session_id: {session_id}")
     #     connection.execute(update_stmt)
     #     connection.commit()
     # db_chat_history_engine = sqlalchemy.create_engine(
