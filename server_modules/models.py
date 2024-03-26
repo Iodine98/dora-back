@@ -98,6 +98,7 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         logger.info(f"Executing query: {str(answer_model_record_query)}")
         answer_model_record = connection.execute(answer_model_record_query)
+        logger.info(answer_model_record)
         if not answer_model_record.fetchone():
             raise ValueError(f"No record found for session_id: {session_id}")
         connection.execute(update_stmt)
