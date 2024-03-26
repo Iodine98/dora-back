@@ -79,11 +79,11 @@ def get_property(
         property_value = request.form[property_name]
     elif (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
-            property_value = json.dumps(json_payload[property_name])
+            property_value = json.dumps(json_payload[property_name], ensure_ascii=False)
         elif isinstance(json_payload, list):
             for item in json_payload:
                 if isinstance(item, dict) and property_name in item:
-                    property_value = json.dumps(item[property_name])
+                    property_value = json.dumps(item[property_name], ensure_ascii=False)
                     break
             else:
                 if with_error:
@@ -393,31 +393,14 @@ def submit_final_answer() -> Response:
     session_id = str(get_property("sessionId"))
     original_answer = get_property("originalAnswer", property_type=dict)
     edited_answer = get_property("editedAnswer", property_type=dict)
-    app.logger.info(f"Original answer value type: {type(original_answer)}")
-    app.logger.info(f"Original answer value: {original_answer}")
-    app.logger.info(f"Edited answer value type: {type(edited_answer)}")
-    app.logger.info(f"Edited answer value: {edited_answer}")
     update_record_with_answers(
-        session_id, original_answer=original_answer, edited_answer=edited_answer
+        session_id,
+        original_answer=original_answer,
+        edited_answer=edited_answer,
+        logger=app.logger,
     )
     response_message = ResponseMessage(
         message="Final answer successfully submitted!", error=""
-    )
-    return make_response(response_message, 200)
-
-
-@app.route("/clock-out-cg", methods=["POST"])
-def clock_out_cg() -> Response:
-    """
-    This function registers the end time of the experiment for the control group
-    """
-    session_id = str(get_property("sessionId"))
-    edited_answer = get_property("editedAnswer", property_type=dict)
-    update_record_with_answers(
-        session_id, original_answer={}, edited_answer=edited_answer
-    )
-    response_message = ResponseMessage(
-        message="Control Group member has been clocked out successfully!", error=""
     )
     return make_response(response_message, 200)
 

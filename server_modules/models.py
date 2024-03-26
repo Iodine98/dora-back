@@ -1,4 +1,5 @@
 import json
+import logging
 from sqlalchemy import JSON, Column, Integer, String, DateTime
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -69,7 +70,7 @@ def add_new_record(new_session_id: str) -> None:
 
 
 def update_record_with_answers(
-    session_id: str, original_answer: dict, edited_answer: dict
+    session_id: str, original_answer: dict, edited_answer: dict, logger: logging.Logger
 ) -> None:
     """
     Update the final_answer table with the original and edited answers
@@ -77,6 +78,8 @@ def update_record_with_answers(
     db_final_answer_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
+    logger.info(f"Updating final answer for session_id: {session_id}")
+    logger.info(f"Session ID is binary string: {isinstance(session_id, bytes)}")
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
         FinalAnswerModel.session_id == session_id
     )  # SELECT * FROM final_answer WHERE session_id = session_id
