@@ -92,6 +92,8 @@ def get_property(
         raise ValueError(
             f"No {property_name} found in request.form, session, or request.json"
         )
+    if property_type == str:
+        return str(property_value).replace("\"", "")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -390,7 +392,7 @@ def submit_final_answer() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    session_id = str(get_property("sessionId"))
+    session_id = get_property("sessionId")
     original_answer = get_property("originalAnswer", property_type=dict)
     edited_answer = get_property("editedAnswer", property_type=dict)
     update_record_with_answers(
