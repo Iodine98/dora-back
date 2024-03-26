@@ -190,7 +190,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-    add_new_record(identity["sessionId"])
+    add_new_record(identity["sessionId"], app.logger)
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
