@@ -166,6 +166,7 @@ class ExperimentSessionMethods:
             formatted_rows = ExperimentSessionMethods.__parse_dates(rows)
             return formatted_rows
 
+
     @staticmethod
     def add_new_session(session_id: str, logger: logging.Logger) -> None:
         """
