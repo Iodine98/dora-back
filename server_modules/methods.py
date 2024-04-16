@@ -3,10 +3,12 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
+from typing import Any
 from tqdm.auto import tqdm
 
 from flask import Flask
 import sqlalchemy
+from sqlalchemy.orm import DeclarativeBase
 from werkzeug.datastructures import FileStorage
 
 from chatdoc.doc_loader.document_loader import DocumentLoader
@@ -138,6 +140,18 @@ class ExperimentSessionMethods:
     """
 
     @staticmethod
+    def __get_rows(connection_string: str, table_model: type[DeclarativeBase]) -> list[dict[str, Any]]:
+        """
+        Get all the rows from the given table
+        """
+        db_engine = sqlalchemy.create_engine(connection_string)
+        with db_engine.connect() as connection:
+            query = sqlalchemy.select(table_model)
+            result = connection.execute(query)
+            rows = [dict(row._asdict()) for row in result]
+            return rows
+
+    @staticmethod
     def add_new_session(session_id: str, logger: logging.Logger) -> None:
         """
         Add a new record to the final_answer table when the user starts a new session
@@ -225,3 +239,30 @@ class ExperimentSessionMethods:
         with db_final_answer_engine.connect() as connection:
             connection.execute(update_message_count)
             connection.commit()
+
+
+        
+    
+    @staticmethod
+    def get_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
+        """
+        Get all the sessions from the final_answer table
+        """
+        sessions = ExperimentSessionMethods.__get_rows(
+            connection_string=Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING"),
+            table_model=FinalAnswerModel,
+        )
+        logger.info(f"Retrieved {len(sessions)} sessions from the final_answer table")
+        return sessions
+        
+    @staticmethod
+    def get_chat_history(logger: logging.Logger) -> list[dict[str, Any]]:
+        """
+        Get all the chat history from the chat_history table
+        """
+        chat_history = ExperimentSessionMethods.__get_rows(
+            connection_string=Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"),
+            table_model=ChatHistoryModel,
+        )
+        logger.info(f"Retrieved {len(chat_history)} chat history from the chat_history table")
+        return chat_history
