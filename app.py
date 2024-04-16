@@ -8,13 +8,14 @@ from typing import Any, cast
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
-
 from flask_cors import CORS
+from langchain_core.messages.base import messages_to_dict
+from langchain_community.chat_message_histories import SQLChatMessageHistory
+from werkzeug.datastructures import FileStorage
 
 # local imports
 from server_modules import set_logging_config
-from server_modules.methods import ServerMethods
-from server_modules.models import add_new_record, update_record_with_answers
+from server_modules.methods import ServerMethods, ExperimentSessionMethods
 from server_modules.class_defs import (
     IdentifyResponse,
     Identity,
@@ -26,9 +27,7 @@ from server_modules.class_defs import (
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
-from langchain_core.messages.base import messages_to_dict
-from langchain_community.chat_message_histories import SQLChatMessageHistory
-from werkzeug.datastructures import FileStorage
+
 
 set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
@@ -190,7 +189,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-    add_new_record(identity["sessionId"], app.logger)
+    ExperimentSessionMethods.add_new_session(identity["sessionId"], app.logger)
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -392,10 +391,10 @@ def submit_final_answer() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    session_id = get_property("sessionId")
+    session_id = str(get_property("sessionId"))
     original_answer = get_property("originalAnswer", property_type=dict)
     edited_answer = get_property("editedAnswer", property_type=dict)
-    update_record_with_answers(
+    ExperimentSessionMethods.update_session(
         session_id,
         original_answer=original_answer,
         edited_answer=edited_answer,

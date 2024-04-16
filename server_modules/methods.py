@@ -2,9 +2,11 @@ import os
 from pathlib import Path
 import tempfile
 import shutil
+import logging
 from tqdm.auto import tqdm
 
 from flask import Flask
+import sqlalchemy
 from werkzeug.datastructures import FileStorage
 
 from chatdoc.doc_loader.document_loader import DocumentLoader
@@ -12,24 +14,27 @@ from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.utils import Utils
+from server_modules.models import FinalAnswerModel, ChatHistoryModel
+
 
 def create_tmp_dir(session_id: str) -> Path:
     """
     Create a temporary directory to store the files of the session ID in before processing them asynchronously
     Return: a Path object with the path to the new directory
     """
-    if(session_id == ""):
+    if session_id == "":
         raise ValueError("Session ID cannot be empty")
     dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
     os.makedirs(dir_path, exist_ok=True)
     return dir_path
+
 
 def delete_tmp_dir(session_id: str) -> bool:
     """
     Delete the temporary directory coupled with the session ID when processing has finished
     Return: a bool to indicate if it succeeded
     """
-    if(session_id == ""):
+    if session_id == "":
         raise ValueError("Session ID cannot be empty")
     dir_path: Path = Path(tempfile.gettempdir()) / Path(session_id)
     try:
@@ -37,7 +42,6 @@ def delete_tmp_dir(session_id: str) -> bool:
         return True
     except FileNotFoundError:
         return False
-
 
 
 class ServerMethods:
@@ -76,7 +80,9 @@ class ServerMethods:
             file.save(unique_file_path)
         return original_name_dict, full_document_dict
 
-    async def save_files_to_vector_db(self, file_dict: dict[str, Path], user_id: str) -> dict[str, list[str]]:
+    async def save_files_to_vector_db(
+        self, file_dict: dict[str, Path], user_id: str
+    ) -> dict[str, list[str]]:
         """
         Process the files in the given document dictionary and add them to the vector database.
 
@@ -98,12 +104,18 @@ class ServerMethods:
             document_ids = await vector_db.add_documents(documents)
             file_id_mapping[filename] = document_ids
         if delete_tmp_dir(user_id):
-            self.app.logger.info(f"Cleaned up temporary directory for session {user_id}")
+            self.app.logger.info(
+                f"Cleaned up temporary directory for session {user_id}"
+            )
         else:
-            self.app.logger.error(f"Failed to clean up temporary directory for session {user_id}")       
+            self.app.logger.error(
+                f"Failed to clean up temporary directory for session {user_id}"
+            )
         return file_id_mapping
 
-    async def delete_docs_from_vector_db(self, document_ids: list[str], session_id: str) -> bool:
+    async def delete_docs_from_vector_db(
+        self, document_ids: list[str], session_id: str
+    ) -> bool:
         """
         Delete the file with the given name from the temporary directory.
 
@@ -118,3 +130,98 @@ class ServerMethods:
         vector_db = VectorDatabase(session_id, embedding_fn)
         deletion_successful = await vector_db.delete_documents(document_ids)
         return deletion_successful
+
+
+class ExperimentSessionMethods:
+    """
+    Method class for handling the creation and updating of experiment sessions.
+    """
+
+    @staticmethod
+    def add_new_session(session_id: str, logger: logging.Logger) -> None:
+        """
+        Add a new record to the final_answer table when the user starts a new session
+        """
+        logger.info(f"Adding new record for session id: {session_id}")
+        db_engine = sqlalchemy.create_engine(
+            Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        )
+        FinalAnswerModel.metadata.create_all(
+            db_engine
+        )  # CREATE TABLE IF NOT EXISTS final_answer
+        answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
+            FinalAnswerModel.session_id == session_id
+        )  # SELECT * FROM final_answer WHERE session_id = session_id
+        insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(
+            session_id=session_id,
+            start_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
+        )  # pylint: disable=not-callable
+        update_stmt = (
+            sqlalchemy.update(FinalAnswerModel)
+            .where(FinalAnswerModel.session_id == session_id)
+            .values(
+                start_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
+                original_answer={},
+                edited_answer={},
+                end_time=None,
+                number_of_messages=-1,
+            )
+        )  # INSERT INTO final_answer (session_id, original_answer, edited_answer) VALUES (session_id, original_answer, edited_answer)
+        with db_engine.connect() as connection:
+            answer_model_record = connection.execute(answer_model_record_query)
+            if not answer_model_record.fetchone():
+                connection.execute(insertion_stmt)
+            else:
+                connection.execute(update_stmt)
+            connection.commit()
+
+    @staticmethod
+    def update_session(
+        session_id: str,
+        original_answer: dict,
+        edited_answer: dict,
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Update the final_answer table with the original and edited answers
+        """
+        db_final_answer_engine = sqlalchemy.create_engine(
+            Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        )
+        logger.info(f"Updating final answer for session_id: {session_id}")
+        answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
+            FinalAnswerModel.session_id == session_id
+        )  # SELECT * FROM final_answer WHERE session_id = session_id
+        update_stmt = (
+            sqlalchemy.update(FinalAnswerModel)
+            .where(FinalAnswerModel.session_id == session_id)
+            .values(
+                original_answer=original_answer,
+                edited_answer=edited_answer,
+                end_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
+            )
+        )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
+        with db_final_answer_engine.connect() as connection:
+            answer_model_record = connection.execute(answer_model_record_query)
+            if not answer_model_record.fetchone():
+                raise ValueError(f"No record found for session_id: {session_id}")
+            connection.execute(update_stmt)
+            connection.commit()
+        db_chat_history_engine = sqlalchemy.create_engine(
+            Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+        )
+        count_stmt = sqlalchemy.select(
+            sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
+        ).where(ChatHistoryModel.session_id == session_id)
+        with db_chat_history_engine.connect() as connection:
+            number_of_messages = connection.execute(count_stmt).scalar()
+            if number_of_messages is None:
+                raise ValueError(f"No chat history found for session_id: {session_id}")
+        update_message_count = (
+            sqlalchemy.update(FinalAnswerModel)
+            .where(FinalAnswerModel.session_id == session_id)
+            .values(number_of_messages=number_of_messages)
+        )
+        with db_final_answer_engine.connect() as connection:
+            connection.execute(update_message_count)
+            connection.commit()
