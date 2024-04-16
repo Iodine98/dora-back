@@ -244,7 +244,7 @@ class ExperimentSessionMethods:
         
     
     @staticmethod
-    def get_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
+    def retrieve_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
         """
         Get all the sessions from the final_answer table
         """
@@ -256,7 +256,7 @@ class ExperimentSessionMethods:
         return sessions
         
     @staticmethod
-    def get_chat_history(logger: logging.Logger) -> list[dict[str, Any]]:
+    def retrieve_chat_history(logger: logging.Logger) -> list[dict[str, Any]]:
         """
         Get all the chat history from the chat_history table
         """

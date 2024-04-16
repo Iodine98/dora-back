@@ -24,6 +24,7 @@ from server_modules.class_defs import (
     UploadResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
+    SessionQueryResponse,	
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
@@ -402,6 +403,22 @@ def submit_final_answer() -> Response:
     )
     response_message = ResponseMessage(
         message="Final answer successfully submitted!", error=""
+    )
+    return make_response(response_message, 200)
+
+@app.route("/get_sessions", methods=["GET"])
+def get_sessions() -> Response:
+    """
+    This function handles the get sessions request from the client.
+
+    Returns:
+        tuple: A tuple containing the response message and the HTTP status code.
+    """
+    sessions = ExperimentSessionMethods.retrieve_sessions(app.logger)
+    response_message = SessionQueryResponse(
+        message="Sessions successfully retrieved!",
+        error="",
+        result=sessions,
     )
     return make_response(response_message, 200)
 

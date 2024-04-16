@@ -62,3 +62,9 @@ class ChatHistoryResponse(ResponseMessage):
     """
     result: list[dict[str, Any]]
 
+class SessionQueryResponse(ResponseMessage):
+    """
+    Represents a response for session.
+    """
+    result: list[dict[str, Any]]
+
