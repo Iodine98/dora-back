@@ -3,6 +3,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
+from datetime import datetime
 from typing import Any
 from tqdm.auto import tqdm
 
@@ -140,7 +141,20 @@ class ExperimentSessionMethods:
     """
 
     @staticmethod
-    def __get_rows(connection_string: str, table_model: type[DeclarativeBase]) -> list[dict[str, Any]]:
+    def __parse_dates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Parse the datetime objects in the rows to strings
+        """
+        for row in rows:
+            for column, value in row.items():
+                if isinstance(value, datetime):
+                    row[column] = value.strftime("%Y-%m-%d %H:%M:%S")
+        return rows
+
+    @staticmethod
+    def __get_rows(
+        connection_string: str, table_model: type[DeclarativeBase]
+    ) -> list[dict[str, Any]]:
         """
         Get all the rows from the given table
         """
@@ -149,7 +163,8 @@ class ExperimentSessionMethods:
             query = sqlalchemy.select(table_model)
             result = connection.execute(query)
             rows = [dict(row._asdict()) for row in result]
-            return rows
+            formatted_rows = ExperimentSessionMethods.__parse_dates(rows)
+            return formatted_rows
 
     @staticmethod
     def add_new_session(session_id: str, logger: logging.Logger) -> None:
@@ -240,9 +255,6 @@ class ExperimentSessionMethods:
             connection.execute(update_message_count)
             connection.commit()
 
-
-        
-    
     @staticmethod
     def retrieve_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
         """
@@ -254,7 +266,7 @@ class ExperimentSessionMethods:
         )
         logger.info(f"Retrieved {len(sessions)} sessions from the final_answer table")
         return sessions
-        
+
     @staticmethod
     def retrieve_chat_history(logger: logging.Logger) -> list[dict[str, Any]]:
         """
@@ -264,5 +276,7 @@ class ExperimentSessionMethods:
             connection_string=Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"),
             table_model=ChatHistoryModel,
         )
-        logger.info(f"Retrieved {len(chat_history)} chat history from the chat_history table")
+        logger.info(
+            f"Retrieved {len(chat_history)} chat history from the chat_history table"
+        )
         return chat_history
