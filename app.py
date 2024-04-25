@@ -4,6 +4,7 @@ import io
 import time
 import uuid
 import json
+from tqdm import tqdm
 from typing import Any, cast
 
 # third party imports
@@ -258,7 +259,7 @@ def upload_files_json() -> Response:
     files = {}
     prefix: str = ""
     session_id: str | None = None
-    for file_dict in json_payload:
+    for file_dict in tqdm(json_payload, desc="Extract files from payload"):
         session_id = file_dict["sessionId"] if session_id is None else session_id
         prefix = get_prefix()
         files = {**files, **get_files()}
@@ -280,9 +281,11 @@ def get_file_id_mappings() -> Response:
     Gets the file ID mappings.
     """
     response_message: WEMUploadResponse
+    process_files_state = executor.futures._state("process_files")
+    app.logger.info("process_files_state: %s", process_files_state)
     if not executor.futures.done("process_files"):
         response_message = WEMUploadResponse(
-            message= executor.futures._state("process_files"),
+            message=str(process_files_state),
             error="",
             fileIdMapping=[],
         )
