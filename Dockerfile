@@ -102,4 +102,4 @@ COPY . /app
 EXPOSE 8000
 
 # Execute Flask server on starting container
-CMD ["gunicorn", "-w", "2", "--threads", "2", "-b", "0.0.0.0:8000", "--timeout", "600", "app:app"]
+CMD ["gunicorn", "-w", "2", "--threads", "4", "-b", "0.0.0.0:8000", "--timeout", "600", "app:app"]
