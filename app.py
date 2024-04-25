@@ -286,7 +286,7 @@ def get_file_id_mappings() -> Response:
             error="",
             fileIdMapping=[],
         )
-        return make_response(response_message, 200)
+        return make_response(response_message, 202)
     future = executor.futures.pop("process_files")
     response_message = future.result()
     return make_response(response_message, 200)
