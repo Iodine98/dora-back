@@ -4,7 +4,7 @@ import io
 import time
 import uuid
 import json
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from typing import Any, cast
 
 # third party imports
