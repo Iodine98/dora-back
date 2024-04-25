@@ -282,7 +282,7 @@ def get_file_id_mappings() -> Response:
     response_message: WEMUploadResponse
     if not executor.futures.done("process_files"):
         response_message = WEMUploadResponse(
-            message="Processing files...",
+            message= executor.futures._state("process_files"),
             error="",
             fileIdMapping=[],
         )
