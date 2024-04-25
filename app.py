@@ -196,8 +196,38 @@ def identify() -> Response:
     return response
 
 
+def process_files(files: dict, session_id: str) -> WEMUploadResponse:
+    """
+    Processes the files and returns a response object.
+
+    Args:
+        files (dict): The files to process.
+        session_id (str): The session ID.
+
+    Returns:
+        dict: A response object containing the message and error.
+    """
+    original_names_dict, full_document_dict = sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
+    time.sleep(1)
+    external_file_id_mapping = [
+        {"filename": original_names_dict[filename], "documentIds": document_ids}
+        for filename, document_ids in internal_file_id_mapping.items()
+    ]
+    response_message = WEMUploadResponse(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+        error="",
+        fileIdMapping=external_file_id_mapping,
+    )
+    return response_message
+
+
 @app.route("/upload_files_json", methods=["POST"])
-async def upload_files_json() -> Response:
+def upload_files_json() -> Response:
     """
     Uploads files to the server.
 
@@ -225,19 +255,20 @@ async def upload_files_json() -> Response:
 
     json_payload = cast(list, request.json)
     files = {}
+    prefix: str = ""
     session_id: str | None = None
     for file_dict in json_payload:
         session_id = file_dict["sessionId"] if session_id is None else session_id
-        prefix: str = get_prefix()
+        prefix = get_prefix()
         files = {**files, **get_files()}
 
     if session_id is None:
         raise ValueError("No session ID found in request.json")
 
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+    original_names_dict, full_document_dict = sm_app.save_files_to_tmp(
         files, session_id=session_id
     )
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+    internal_file_id_mapping = sm_app.save_files_to_vector_db(
         full_document_dict, user_id=session_id
     )
     time.sleep(1)
