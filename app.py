@@ -22,7 +22,6 @@ from server_modules.class_defs import (
     Identity,
     ResponseMessage,
     PromptResponse,
-    UploadResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
     SessionQueryResponse,	
@@ -198,7 +197,7 @@ def identify() -> Response:
     return response
 
 
-def process_files(files: dict, session_id: str) -> WEMUploadResponse:
+async def process_files(files: dict, session_id: str) -> WEMUploadResponse:
     """
     Processes the files and returns a response object.
 
@@ -209,10 +208,10 @@ def process_files(files: dict, session_id: str) -> WEMUploadResponse:
     Returns:
         dict: A response object containing the message and error.
     """
-    original_names_dict, full_document_dict = sm_app.save_files_to_tmp(
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
         files, session_id=session_id
     )
-    internal_file_id_mapping = sm_app.save_files_to_vector_db(
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
         full_document_dict, user_id=session_id
     )
     time.sleep(1)
@@ -267,24 +266,31 @@ def upload_files_json() -> Response:
     if session_id is None:
         raise ValueError("No session ID found in request.json")
 
-    original_names_dict, full_document_dict = sm_app.save_files_to_tmp(
-        files, session_id=session_id
-    )
-    internal_file_id_mapping = sm_app.save_files_to_vector_db(
-        full_document_dict, user_id=session_id
-    )
-    time.sleep(1)
-    external_file_id_mapping = [
-        {"filename": original_names_dict[filename], "documentIds": document_ids}
-        for filename, document_ids in internal_file_id_mapping.items()
-    ]
-    response_message = WEMUploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+    executor.submit_stored("process_files", process_files, files, session_id)
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
         error="",
-        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
+
+@app.route("/get_file_id_mappings", methods=["GET"])
+def get_file_id_mappings() -> Response:
+    """
+    Gets the file ID mappings.
+    """
+    response_message: WEMUploadResponse
+    if not executor.futures.done("process_files"):
+        response_message = WEMUploadResponse(
+            message="Processing files...",
+            error="",
+            fileIdMapping=[],
+        )
+        return make_response(response_message, 200)
+    future = executor.futures.pop("process_files")
+    response_message = future.result()
+    return make_response(response_message, 200)
+
 
 
 @app.route("/upload_files", methods=["POST"])
@@ -314,21 +320,10 @@ async def upload_files() -> Response:
     prefix: str = get_prefix()
     files = get_files()
 
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
-        files, session_id=session_id
-    )
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
-        full_document_dict, user_id=session_id
-    )
-    time.sleep(1)
-    external_file_id_mapping = {
-        original_names_dict[filename]: document_ids
-        for filename, document_ids in internal_file_id_mapping.items()
-    }
-    response_message = UploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+    executor.submit_stored("process_files", process_files, files, session_id)
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
         error="",
-        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
