@@ -9,6 +9,7 @@ from typing import Any, cast
 # third party imports
 from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
+from flask_executor import Executor
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from werkzeug.datastructures import FileStorage
@@ -37,6 +38,7 @@ app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
+
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
@@ -51,7 +53,7 @@ match current_env:
 
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
-
+executor = Executor(app)
 
 Basic = str | int | float | bool
 Property = Basic | dict | tuple | list
