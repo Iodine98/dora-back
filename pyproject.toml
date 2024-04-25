@@ -24,6 +24,7 @@ llama-cpp-python = "0.2.11"
 gunicorn = "20.1.0"
 mariadb = "^1.1.10"
 sqlalchemy = "^2.0.28"
+flask-executor = "^1.0.0"
 
 
 
