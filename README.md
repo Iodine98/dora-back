@@ -49,10 +49,6 @@ mariadb+mariadbconnector://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
 ```
 Then run `poetry run flask --app server run`
 
-### Run the Streamlit app
-
-Run `poetry run streamlit st_app.py` 
-
 ## Run Flask server using Docker container
 
 Please configure the values in the Dockerfile before proceeding.
