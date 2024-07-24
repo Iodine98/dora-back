@@ -7,7 +7,7 @@ import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 from langchain.schema import Document
 
-from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
+from .document_loader_factory import DocumentLoaderFactory, BaseLoader
 
 
 class DocumentLoader:

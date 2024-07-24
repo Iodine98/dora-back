@@ -1,5 +1,6 @@
 from os import environ as os_environ
 from typing import Any
+import httpx
 
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
@@ -23,9 +24,10 @@ class Chatbot:
     def __init__(
         self,
         user_id: str,
+        http_client: httpx.Client | None = None
     ):
         self.user_id = user_id
-        self.embedding_fn = EmbeddingFactory().create()
+        self.embedding_fn = EmbeddingFactory(http_client=http_client).create()
         self.vector_db = VectorDatabase(self.user_id, self.embedding_fn)
         self.memory_db = SQLChatMessageHistory(self.user_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
