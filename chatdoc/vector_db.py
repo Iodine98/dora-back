@@ -1,6 +1,7 @@
 """
 Module definine the VectorDatabase class
 """
+
 import os
 from typing import Literal, TypedDict
 from langchain.embeddings.base import Embeddings
@@ -68,6 +69,7 @@ class CustomVectorStoreRetriever(VectorStoreRetriever):
             doc.metadata["ranking"] = i + 1
         return docs
 
+
 class VectorDatabase:
     """
     The VectorDatabase class that creates a ChromaDB store locally
@@ -96,18 +98,23 @@ class VectorDatabase:
                 raise ValueError("Invalid DORA environment")
         return self._chroma_db_client
 
-    def __init__(self, collection_name: str, embedding_fn: Embeddings) -> None:
+    def __init__(
+        self,
+        collection_name: str,
+        embedding_fn: Embeddings,
+        persist_dir: str = "./chroma_db",
+    ) -> None:
         self.collection_name = collection_name
         self.chroma_instance = Chroma(
             collection_name=collection_name,
             client=self.chroma_client,
             embedding_function=embedding_fn,
-            persist_directory="./chroma_db",
+            persist_directory=os.environ.get("CHROMA_DB_PERSIST_DIR", persist_dir),
         )
         self.retriever_settings: RetrieverSettings = self.load_retriever_settings()
         self.retriever = CustomVectorStoreRetriever(
             vectorstore=self.chroma_instance,
-            **self.retriever_settings, # type: ignore
+            **self.retriever_settings,  # type: ignore
         )
 
     def load_retriever_settings(
