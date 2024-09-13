@@ -25,13 +25,13 @@ from server_modules.class_defs import (
     PromptResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
-    SessionQueryResponse,	
+    SessionQueryResponse,
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 
 
-set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
+set_logging_config(Utils.get_env_variable("LOGGING_FILE_DIR"))
 
 
 app = Flask(__name__)
@@ -95,7 +95,7 @@ def get_property(
             f"No {property_name} found in request.form, session, or request.json"
         )
     if property_type == str:
-        return str(property_value).replace("\"", "")
+        return str(property_value).replace('"', "")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -275,6 +275,7 @@ def upload_files_json() -> Response:
     response = make_response(response_message, 200)
     return response
 
+
 @app.route("/get_file_id_mappings", methods=["GET"])
 def get_file_id_mappings() -> Response:
     """
@@ -293,7 +294,6 @@ def get_file_id_mappings() -> Response:
     future = executor.futures.pop("process_files")
     response_message = future.result()
     return make_response(response_message, 200)
-
 
 
 @app.route("/upload_files", methods=["POST"])
@@ -436,6 +436,7 @@ def submit_final_answer() -> Response:
         message="Final answer successfully submitted!", error=""
     )
     return make_response(response_message, 200)
+
 
 @app.route("/get_sessions", methods=["GET"])
 def get_sessions() -> Response:
