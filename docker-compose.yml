@@ -54,7 +54,7 @@ services:
       LOGGING_FILE_DIR: /app/logs
     volumes:
       - logging_file_dir:/app/logs
-      - ${CHAT_MODEL_FOLDER_PATH:?error:/models/chat_models
+      - ${CHAT_MODEL_FOLDER_PATH:?error}:/models/chat_models
       - ${SENTENCE_TRANSFORMERS_HOME:?error}:/models/embedding_models
     depends_on:
       - dora-mariadb
