@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from abc import abstractmethod
 from typing import Any
 from pathlib import Path
-from chatdoc.utils import Utils
+from .utils import Utils
 
 
 @dataclass(frozen=True)
