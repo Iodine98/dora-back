@@ -1,12 +1,28 @@
-version: '3'
+version: '3.9'
 name: dora-services
+networks:
+  net:
+    driver: bridge
+
 services:
+  dora-chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT: TRUE
+      - PERSIST_DIRECTORY: ${CHROMA_DB_PERSIST_DIR}
+      - ANONYMIZED_TELEMETRY: ${ANONYMIZED_TELEMETRY:-TRUE}
+    ports:
+      - 8000:8000
+    networks:
+      - net
   dora-mariadb:
     image: mariadb:latest
     ports:
       - "3306:3306"
     volumes:
-      - ~/dora-mariadb:/var/lib/mysql # Add mapping to store DB files on permanent storage
+      - mariadb_data:/var/lib/mysql # Add mapping to store DB files on permanent storage
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_USER: ${MARIADB_USER}
@@ -19,14 +35,14 @@ services:
   dora-backend:
     image: docker.io/library/dora-backend:latest
     ports:
-      - "30080:8000"
+      - 30080:8000
     restart: "always"
     environment:
-      FLASK_PORT: 5000
-      TOP_K_DOCUMENTS: 10
-      MINIMUM_ACCURACY: 0.50
-      FETCH_K_DOCUMENTS: 100
-      LAMBDA_MULT: 0.2
+      FLASK_PORT: ${FLASK_PORT}
+      TOP_K_DOCUMENTS: ${TOP_K_DOCUMENTS}
+      MINIMUM_ACCURACY: ${MINIMUM_ACCURACY}
+      FETCH_K_DOCUMENTS: ${FETCH_K_DOCUMENTS}
+      LAMBDA_MULT: ${LAMBDA_MULT}
       STRATEGY: mmr
       CHAT_HISTORY_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/experiment
       FINAL_ANSWER_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/experiment
@@ -34,13 +50,27 @@ services:
       HTTP_PROXY: ${HTTP_PROXY}
       HTTPS_PROXY: ${HTTPS_PROXY}
     volumes:
-      - ~/dora-logs/dora-backend:/app/logs
-      # - chat_model_folder_path:/models/chat_models
-      # - embedding_model_folder_path:/models/embedding_models
+      - logging_file_dir:/app/logs
+      - chat_model_folder_path:/models/chat_models
+      - embedding_model_folder_path:/models/embedding_models
     depends_on:
       - dora-mariadb
     labels:
       kompose.service.type: nodeport
       kompose.volume.type: hostPath
       kompose.image-pull-policy: "Never"
+
+  volumes:
+    chat_model_folder_path:
+      external:
+        name: ${CHAT_MODEL_FOLDER_PATH}
+    embedding_model_folder_path:
+      external:
+        name: ${SENTENCE_TRANSFORMERS_HOME}
+    logging_file_dir:
+      external:
+        name: ${LOGGING_FILE_DIR}
+    mariadb_data:
+    chromadb_data:
+
 
