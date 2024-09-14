@@ -25,7 +25,7 @@ from server_modules.class_defs import (
     PromptResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
-    SessionQueryResponse,	
+    SessionQueryResponse,
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
@@ -95,7 +95,7 @@ def get_property(
             f"No {property_name} found in request.form, session, or request.json"
         )
     if property_type == str:
-        return str(property_value).replace("\"", "")
+        return str(property_value).replace('"', "")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -275,6 +275,7 @@ def upload_files_json() -> Response:
     response = make_response(response_message, 200)
     return response
 
+
 @app.route("/get_file_id_mappings", methods=["GET"])
 def get_file_id_mappings() -> Response:
     """
@@ -293,7 +294,6 @@ def get_file_id_mappings() -> Response:
     future = executor.futures.pop("process_files")
     response_message = future.result()
     return make_response(response_message, 200)
-
 
 
 @app.route("/upload_files", methods=["POST"])
@@ -414,28 +414,6 @@ def clear_chat_history() -> Response:
     )
     return make_response(response_message, 200)
 
-
-@app.route("/submit_final_answer", methods=["POST"])
-def submit_final_answer() -> Response:
-    """
-    This function handles the final answer submission from the client.
-
-    Returns:
-        tuple: A tuple containing the response message and the HTTP status code.
-    """
-    session_id = str(get_property("sessionId"))
-    original_answer = get_property("originalAnswer", property_type=dict)
-    edited_answer = get_property("editedAnswer", property_type=dict)
-    ExperimentSessionMethods.update_session(
-        session_id,
-        original_answer=original_answer,
-        edited_answer=edited_answer,
-        logger=app.logger,
-    )
-    response_message = ResponseMessage(
-        message="Final answer successfully submitted!", error=""
-    )
-    return make_response(response_message, 200)
 
 @app.route("/get_sessions", methods=["GET"])
 def get_sessions() -> Response:
