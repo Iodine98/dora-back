@@ -34,12 +34,14 @@ class IdentifyResponse(ResponseMessage, Identity):
     Represents a response for identity identification.
     """
 
+
 class WEMUploadResponse(ResponseMessage):
     """
     Represents a response for uploading files from WEM.
     """
 
-    fileIdMapping: list[dict[str, str | list[str]]]
+    fileIdMapping: list[dict[str, list[str]]]
+
 
 class UploadResponse(ResponseMessage):
     """
@@ -56,15 +58,18 @@ class PromptResponse(ResponseMessage):
 
     result: dict[str, Any]
 
+
 class ChatHistoryResponse(ResponseMessage):
     """
     Represents a response for chat history.
     """
+
     result: list[dict[str, Any]]
+
 
 class SessionQueryResponse(ResponseMessage):
     """
     Represents a response for session.
     """
-    result: list[dict[str, Any]]
 
+    result: list[dict[str, Any]]
