@@ -28,18 +28,8 @@ services:
     ports:
       - "8000:8000"
     restart: "always"
-    environment:
-      FLASK_PORT: 5000
-      TOP_K_DOCUMENTS: 10
-      MINIMUM_ACCURACY: 0.50
-      FETCH_K_DOCUMENTS: 100
-      LAMBDA_MULT: 0.2
-      STRATEGY: mmr
-      CHAT_HISTORY_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/experiment
-      FINAL_ANSWER_CONNECTION_STRING: ${MARIADB_INSTANCE_URL}/experiment
-      FLASK_APP: ./app.py
-      HTTP_PROXY: ${HTTP_PROXY}
-      HTTPS_PROXY: ${HTTPS_PROXY}
+    env_file:
+      - ".env"
     volumes:
       - ~/dora-logs/dora-backend:/app/logs
       # - chat_model_folder_path:/models/chat_models
