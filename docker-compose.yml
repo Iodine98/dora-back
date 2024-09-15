@@ -6,11 +6,9 @@ services:
       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
-    environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
-      MYSQL_DATABASE: experiment
+    env_file:
+      - path: "./settings/.mariadb.env"
+        required: true
     labels:
       kompose.service.type: nodeport
       kompose.volume.type: hostPath
@@ -28,7 +26,16 @@ services:
       - "8000:8000"
     restart: "always"
     env_file:
-      - ".env"
+      - path: ".env"
+        required: true
+      - path: "./settings/.app.env"
+        required: true
+      - path: "./settings/.retrieval.env"
+        required: true
+      - path: "./settings/.mariadb.env"
+        required: true
+      - path: "./settings/.model.env"
+        required: true
     volumes:
       - logging_file_dir:/app/logs
       - chat_model_folder:/models/chat_models
@@ -44,8 +51,14 @@ volumes:
   logging_file_dir:
   mariadb_data:
   chat_model_folder:
-    external: true
-    name: ${CHAT_MODEL_FOLDER_PATH:?error}
+    driver: local
+    driver_opts:
+     type: none
+     o: bind
+     device: ${CHAT_MODEL_FOLDER_PATH:?error}
   embedding_model_folder:
-    external: true
-    name: ${SENTENCE_TRANSFORMERS_HOME:?error}
+    driver: local
+    driver_opts:
+     type: none
+     o: bind
+     device: ${EMBEDDING_MODEL_FOLDER_PATH:?error}
