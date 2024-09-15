@@ -1,0 +1,47 @@
+summary: Get chat history
+description: Retrieves the chat history for the current session.
+responses:
+  '200':
+    description: Successfully retrieved chat history.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+            error:
+              type: string
+              description: Error message, if any.
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The ID of the chat message.
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: The timestamp of the chat message.
+                  sender:
+                    type: string
+                    description: The sender of the chat message.
+                  message:
+                    type: string
+                    description: The content of the chat message.
+  '400':
+    description: Error message if there is a problem with the request.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.

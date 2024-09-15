@@ -1,0 +1,53 @@
+summary: Identifies the user and returns a response object.
+description: Returns a generic welcome message for Gunicorn to load.
+requestBody:
+  description: Request to identify the user.
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          sessionId:
+            type: string
+            description: The session ID of the user.
+          hasDB:
+            type: boolean
+            description: Indicates if the user has a database.
+responses:
+  '200':
+    description: Successful response with a welcome message
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            sessionId:
+              type: string
+              description: The session ID of the user.
+            message:
+              type: string
+              description: Welcome message for the user.
+            authenticated:
+              type: boolean
+              description: Indicates if the user is authenticated.
+            hasDB:
+              type: boolean
+              description: Indicates if the user has a database.
+          example:
+            sessionId: "123e4567-e89b-12d3-a456-426614174000"
+            message: "Welcome back user: 123e4567-e89b-12d3-a456-426614174000 !"
+            authenticated: true
+            hasDB: true
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              description: Error message
+          example:
+            error: "Invalid request"

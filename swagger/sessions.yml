@@ -1,0 +1,48 @@
+summary: Get sessions
+description: Retrieves the sessions from the server.
+responses:
+  '200':
+    description: Successfully retrieved sessions.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+            error:
+              type: string
+              description: Error message, if any.
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    description: The ID of the session.
+                  sessionName:
+                    type: string
+                    description: The name of the session.
+                  startTime:
+                    type: string
+                    format: date-time
+                    description: The start time of the session.
+                  endTime:
+                    type: string
+                    format: date-time
+                    description: The end time of the session.
+  '400':
+    description: Error message if there is a problem with the request.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.

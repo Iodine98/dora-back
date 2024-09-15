@@ -11,6 +11,7 @@ from typing import Any, cast
 from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 from flask_executor import Executor
+from flasgger import Swagger, swag_from
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from werkzeug.datastructures import FileStorage
@@ -35,6 +36,16 @@ set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
 
 app = Flask(__name__)
+swagger = Swagger(
+    app,
+    template={
+        "info": {
+            "version": "0.0.1",
+            "title": "DoRA-backend API",
+            "description": "DoRA-backend API for the Document Retrieval and Analysis (DoRA) application.",
+        }
+    },
+)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
@@ -189,6 +200,7 @@ def set_post_options() -> Response:
 
 
 @app.route("/", methods=["GET"])
+@swag_from("swagger/root.yml")
 def root() -> Response:
     """
     Returns a generic welcome for Gunicorn to load
@@ -197,6 +209,7 @@ def root() -> Response:
 
 
 @app.route("/identify", methods=["POST"])
+@swag_from("swagger/identify.yml")
 def identify() -> Response:
     """
     Identifies the user and returns a response object.
@@ -229,6 +242,7 @@ def identify() -> Response:
 
 
 @app.route("/upload_files_json", methods=["POST"])
+@swag_from("swagger/upload_files_json.yml")
 def upload_files_json() -> Response:
     """
     Uploads files to the server.
@@ -277,6 +291,7 @@ def upload_files_json() -> Response:
 
 
 @app.route("/get_file_id_mappings", methods=["GET"])
+@swag_from("swagger/file_id_mappings.yml")
 def get_file_id_mappings() -> Response:
     """
     Gets the file ID mappings.
@@ -297,6 +312,7 @@ def get_file_id_mappings() -> Response:
 
 
 @app.route("/upload_files", methods=["POST"])
+@swag_from("swagger/upload_files.yml")
 async def upload_files() -> Response:
     """
     Uploads files to the server.
@@ -333,6 +349,7 @@ async def upload_files() -> Response:
 
 
 @app.route("/delete_file", methods=["DELETE", "POST"])
+@swag_from("swagger/file_del.yml")
 async def delete_file() -> Response:
     """
     Deletes a file from the server.
@@ -358,6 +375,7 @@ async def delete_file() -> Response:
 
 
 @app.route("/prompt", methods=["POST"])
+@swag_from("swagger/prompt.yml")
 def prompt() -> Response:
     """
     This function handles the prompt request from the client.
@@ -377,6 +395,7 @@ def prompt() -> Response:
 
 
 @app.route("/get_chat_history", methods=["GET"])
+@swag_from("swagger/chat_history.yml")
 def get_chat_history() -> Response:
     """
     Gets the chat history.
@@ -397,6 +416,7 @@ def get_chat_history() -> Response:
 
 
 @app.route("/clear_chat_history", methods=["DELETE"])
+@swag_from("swagger/clear_chat_history.yml")
 def clear_chat_history() -> Response:
     """
     Clears the chat history.
@@ -416,6 +436,7 @@ def clear_chat_history() -> Response:
 
 
 @app.route("/get_sessions", methods=["GET"])
+@swag_from("swagger/sessions.yml")
 def get_sessions() -> Response:
     """
     This function handles the get sessions request from the client.

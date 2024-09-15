@@ -1,0 +1,48 @@
+summary: Handle prompt request
+description: Handles the prompt request from the client.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          sessionId:
+            type: string
+            description: The session ID for the user.
+          prompt:
+            type: string
+            description: The prompt message to be sent to the chatbot.
+        required:
+          - sessionId
+          - prompt
+responses:
+  '200':
+    description: Successfully processed the prompt.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+            error:
+              type: string
+              description: Error message, if any.
+            result:
+              type: string
+              description: The result of the prompt.
+  '400':
+    description: Error message if there is a problem with the request.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.

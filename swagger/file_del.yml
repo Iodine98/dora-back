@@ -1,0 +1,51 @@
+summary: Delete a file from the server
+description: Deletes a file from the server.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          sessionId:
+            type: string
+            description: The session ID for the deletion session.
+          filename:
+            type: string
+            description: The name of the file to be deleted.
+          documentIds:
+            type: array
+            items:
+              type: string
+            description: The IDs of the documents to be deleted.
+        required:
+          - sessionId
+          - filename
+          - documentIds
+responses:
+  '200':
+    description: Success message indicating the file was deleted.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+            error:
+              type: string
+              description: Error message, if any.
+  '400':
+    description: Error message if the file was not found or other validation errors.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.

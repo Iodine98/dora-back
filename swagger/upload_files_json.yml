@@ -1,0 +1,56 @@
+summary: Upload files to the server
+description: Uploads files to the server.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: array
+        items:
+          type: object
+          properties:
+            sessionId:
+              type: string
+              description: The session ID for the upload session.
+            prefix:
+              type: string
+              description: The prefix for the file names.
+            filename:
+              type: string
+              description: The name of the file.
+            file_data:
+              type: string
+              format: base64
+              description: The base64 encoded file data.
+          required:
+            - sessionId
+            - prefix
+            - filename
+            - file_data
+responses:
+  '200':
+    description: Success message indicating the number of files uploaded.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+            error:
+              type: string
+              description: Error message, if any.
+  '400':
+    description: Error message if user is not authenticated or other validation errors.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.
