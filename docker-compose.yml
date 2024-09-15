@@ -1,4 +1,3 @@
-version: '3'
 name: dora-services
 services:
   dora-mariadb:
@@ -6,7 +5,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ~/dora-mariadb:/var/lib/mysql # Add mapping to store DB files on permanent storage
+      - mariadb_data:/var/lib/mysql
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_USER: ${MARIADB_USER}
