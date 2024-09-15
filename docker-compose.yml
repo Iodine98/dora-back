@@ -31,9 +31,9 @@ services:
     env_file:
       - ".env"
     volumes:
-      - ~/dora-logs/dora-backend:/app/logs
-      # - chat_model_folder_path:/models/chat_models
-      # - embedding_model_folder_path:/models/embedding_models
+      - logging_file_dir:/app/logs
+      - chat_model_folder:/models/chat_models
+      - embedding_model_folder:/models/embedding_model
     depends_on:
       - dora-mariadb
     labels:
@@ -41,3 +41,12 @@ services:
       kompose.volume.type: hostPath
       kompose.image-pull-policy: "Never"
 
+volumes:
+  logging_file_dir:
+  mariadb_data:
+  chat_model_folder:
+    external: true
+    name: ${CHAT_MODEL_FOLDER_PATH:?error}
+  embedding_model_folder:
+    external: true
+    name: ${SENTENCE_TRANSFORMERS_HOME:?error}
