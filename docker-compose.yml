@@ -18,6 +18,13 @@ services:
 
   dora-backend:
     image: docker.io/library/dora-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    develop:
+      watch:
+        - action: rebuild
+          path: .
     ports:
       - "30080:8000"
     restart: "always"
