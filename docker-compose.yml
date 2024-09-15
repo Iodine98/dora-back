@@ -26,7 +26,7 @@ services:
         - action: rebuild
           path: .
     ports:
-      - "30080:8000"
+      - "8000:8000"
     restart: "always"
     environment:
       FLASK_PORT: 5000
