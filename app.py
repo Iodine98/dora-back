@@ -9,7 +9,7 @@ from typing import Any, cast
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
-from flask_cors import CORS
+
 from flask_executor import Executor
 from flasgger import Swagger, swag_from
 from langchain_core.messages.base import messages_to_dict
@@ -53,7 +53,7 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
-        CORS(app)
+     
         app.logger.info(msg="Running in development mode")
     case "TST":
         app.logger.info(msg="Running in test mode")
@@ -155,33 +155,6 @@ def handle_value_error(error: Exception) -> Response:
     """
     response_message = ResponseMessage(message="", error=str(error))
     return make_response(response_message, 400)
-
-
-@app.after_request
-def add_cors_headers(response: Response) -> Response:
-    """
-    Adds CORS headers to the response object.
-
-    Args:
-        response (Response): The response object to add CORS headers to.
-
-    Returns:
-        Response: The response object with CORS headers added.
-    """
-    current_host_port = "127.0.0.1:5000"
-    origin = request.headers.get("Origin")
-    host = request.headers.get("Host")
-    if host != current_host_port:
-        if origin is not None:
-            response_message = ResponseMessage(
-                message="", error="No origin header found"
-            )
-            return make_response(response_message, 400)
-    if host == current_host_port:
-        origin = host
-    response.headers["Access-Control-Allow-Origin"] = str(origin)
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
 
 
 @app.route("/upload_files", methods=["OPTIONS"])
