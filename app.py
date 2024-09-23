@@ -293,7 +293,7 @@ def get_file_id_mappings(session_id: str) -> Response:
 
 
 @app.route("/upload_files", methods=["POST"])
-@swag_from("swagger/upload_files.yml")
+# @swag_from("swagger/upload_files.yml")
 async def upload_files() -> Response:
     """
     Uploads files to the server.
