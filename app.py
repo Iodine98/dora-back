@@ -43,7 +43,7 @@ swagger = Swagger(
             "version": "0.0.1",
             "title": "DoRA-backend API",
             "description": "DoRA-backend API for the Document Retrieval and Analysis (DoRA) application.",
-        }
+        },
     },
 )
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
