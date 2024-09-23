@@ -20,7 +20,7 @@ RUN pip install poetry
 
 # Install necessary dependencies
 RUN poetry config installer.max-workers 10
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install -v --without dev --no-root
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install -v --no-root
 
 #-----------------------------------------------------------------------------------
 ## Install MariaDB Connector/C
@@ -100,6 +100,9 @@ COPY . /app
 
 # Enable port 8000 
 EXPOSE 8000
+
+# Enable debug port
+EXPOSE 5678
 
 # Execute Flask server on starting container
 CMD ["gunicorn", "-w", "2", "--threads", "4", "--preload", "-b", "0.0.0.0:8000", "--timeout", "600", "app:app"]
