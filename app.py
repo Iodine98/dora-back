@@ -141,7 +141,7 @@ async def process_files(files: dict, session_id: str) -> WEMUploadResponse:
         for filename, document_ids in internal_file_id_mapping.items()
     ]
     response_message = WEMUploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload en verwerkt!",
         error="",
         fileIdMapping=external_file_id_mapping,
     )
