@@ -320,13 +320,19 @@ async def upload_files() -> Response:
     prefix: str = get_prefix()
     files = get_files()
 
-    executor.submit_stored("process_files", process_files, files, session_id)
-    response_message = ResponseMessage(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
-        error="",
+    executor.submit_stored(
+        f"process_files_{session_id}", process_files, files, session_id
     )
-    response = make_response(response_message, 200)
-    return response
+    if not executor.futures.done(f"process_files_{session_id}"):
+        return make_response(
+            ResponseMessage(
+                message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!\nDeze worden nu verwerkt.",
+                error="",
+            ),
+            202,
+        )
+    future = executor.futures.pop(f"process_files_{session_id}")
+    return make_response(future.result(), 200)
 
 
 @app.route("/delete_file", methods=["DELETE", "POST"])
