@@ -36,6 +36,12 @@ set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
 
 app = Flask(__name__)
+
+app.config["SWAGGER"] = {
+    "title": "DoRA-backend API",
+    "openapi": "3.0.2",
+    "uiversion": 3,
+}
 swagger = Swagger(
     app,
     template={
