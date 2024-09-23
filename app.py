@@ -263,16 +263,24 @@ def upload_files_json() -> Response:
     return response
 
 
-@app.route("/get_file_id_mappings", methods=["GET"])
+@app.route("/get_file_id_mappings/<session_id>", methods=["GET"])
 @swag_from("swagger/file_id_mappings.yml")
-def get_file_id_mappings() -> Response:
+def get_file_id_mappings(session_id: str) -> Response:
     """
     Gets the file ID mappings.
     """
     response_message: WEMUploadResponse
-    process_files_state = executor.futures._state("process_files")
+    status_name = f"process_files_{session_id}"
+    process_files_state: None | str = executor.futures._state(status_name)
+    if process_files_state is None:
+        response_message = WEMUploadResponse(
+            message=f"No file ID mappings found for session {session_id}.",
+            error="",
+            fileIdMapping=[],
+        )
+        return make_response(response_message)
     app.logger.info("process_files_state: %s", process_files_state)
-    if not executor.futures.done("process_files"):
+    if not executor.futures.done(status_name):
         response_message = WEMUploadResponse(
             message=str(process_files_state),
             error="",
