@@ -10,10 +10,8 @@ requestBody:
         properties:
           sessionId:
             type: string
+            required: true
             description: The session ID of the user.
-          hasDB:
-            type: boolean
-            description: Indicates if the user has a database.
 responses:
   '200':
     description: Successful response with a welcome message
