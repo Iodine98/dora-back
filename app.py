@@ -371,6 +371,18 @@ def prompt() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
+    if not executor.futures.done(f"process_files_{session_id}"):
+        status = str(executor.futures._state(f"process_files_{session_id}"))
+        return make_response(
+            ResponseMessage(
+                message="Files necessary for prompt are still processing, please try again in one minute.",
+                error=status,
+            ),
+            202,
+        )
+    else:
+        future = executor.futures.pop(f"process_files_{session_id}")
+        future.result()
     message = str(get_property("prompt"))
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
