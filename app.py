@@ -96,7 +96,7 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
-    elif (json_payload := request.json) is not None:
+    elif request.is_json and (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
             property_value = json.dumps(json_payload[property_name], ensure_ascii=False)
         elif isinstance(json_payload, list):
