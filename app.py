@@ -4,6 +4,9 @@ import io
 import time
 import uuid
 import json
+import debugpy
+
+debugpy.listen(("0.0.0.0", 5678))
 from tqdm.auto import tqdm
 from typing import Any, cast
 
@@ -59,7 +62,6 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
-     
         app.logger.info(msg="Running in development mode")
     case "TST":
         app.logger.info(msg="Running in test mode")
