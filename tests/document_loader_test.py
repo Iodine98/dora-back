@@ -1,7 +1,9 @@
+from logging import Logger
 from pathlib import Path
 from typing import Iterator
 from unittest.mock import MagicMock
 from langchain.schema.document import Document
+from langchain.text_splitter import NLTKTextSplitter, RecursiveCharacterTextSplitter
 
 import pytest
 
@@ -95,3 +97,33 @@ def test_document_iterators_dict_values_are_document_iterators(document_loader, 
         document = next(document_iterator)
         assert isinstance(document, Document), "Should yield an instance of Document"
         assert document is mock_document
+
+
+def _bare_document_loader() -> DocumentLoader:
+    """
+    Builds a DocumentLoader instance without running __init__, so that
+    load_token_text_splitter can be tested in isolation.
+    """
+    instance = object.__new__(DocumentLoader)
+    instance.logger = Logger("test_document_loader")
+    return instance
+
+
+def test_load_token_text_splitter_defaults_to_character(monkeypatch):
+    """
+    Test that load_token_text_splitter defaults to RecursiveCharacterTextSplitter
+    when TEXT_SPLITTER_TYPE is not set.
+    """
+    monkeypatch.delenv("TEXT_SPLITTER_TYPE", raising=False)
+    splitter = _bare_document_loader().load_token_text_splitter()
+    assert isinstance(splitter, RecursiveCharacterTextSplitter)
+
+
+def test_load_token_text_splitter_sentence(monkeypatch):
+    """
+    Test that load_token_text_splitter returns NLTKTextSplitter when
+    TEXT_SPLITTER_TYPE is set to "sentence".
+    """
+    monkeypatch.setenv("TEXT_SPLITTER_TYPE", "sentence")
+    splitter = _bare_document_loader().load_token_text_splitter()
+    assert isinstance(splitter, NLTKTextSplitter)
