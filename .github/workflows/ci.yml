@@ -23,12 +23,7 @@ jobs:
       - name: Install MariaDB Connector/C dev headers
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget curl gnupg
-          wget https://r.mariadb.com/downloads/mariadb_repo_setup
-          chmod +x mariadb_repo_setup
-          sudo ./mariadb_repo_setup --mariadb-server-version="mariadb-10.6"
-          sudo apt-get update
-          sudo apt-get install -y libmariadb3 libmariadb-dev
+          sudo apt-get install -y libmariadb-dev
 
       - name: Install dependencies
         run: poetry install
