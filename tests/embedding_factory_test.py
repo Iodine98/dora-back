@@ -1,45 +1,48 @@
-import os
-
 import pytest
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 
 
-def test_env_fn_called_missing_vendor_name():
+def test_env_fn_called_missing_vendor_name(monkeypatch):
     """
-    Test case to ensure that the env_fn is called when the vendor name is not set.
+    Test case to ensure that a ValueError is raised when the vendor name is not
+    provided and the EMBEDDING_MODEL_VENDOR_NAME environment variable is not set.
     """
-    embedding_factory = EmbeddingFactory(embedding_model_name="gpt-3.5-turbo")
-    if "EMBEDDING_MODEL_VENDOR_NAME" in os.environ:
-        assert embedding_factory.vendor_name == os.environ["EMBEDDING_MODEL_VENDOR_NAME"]
-    else:
-        with pytest.raises(ValueError, match="not set in environment"):
-            embedding_factory.create()
+    monkeypatch.delenv("EMBEDDING_MODEL_VENDOR_NAME", raising=False)
+    with pytest.raises(ValueError, match="not set in environment"):
+        EmbeddingFactory(embedding_model_name="gpt-3.5-turbo")
 
 
-def test_env_fn_called_missing_model_name():
+def test_env_fn_called_missing_model_name(monkeypatch):
     """
-    Test case to ensure that the env_fn is called when the model name is not set.
+    Test case to ensure that a ValueError is raised when the model name is not
+    provided and the EMBEDDING_MODEL_NAME environment variable is not set.
     """
-    embedding_factory = EmbeddingFactory(vendor_name="openai")
-    if "EMBEDDING_MODEL_NAME" in os.environ:
-        assert embedding_factory.embedding_model_name == os.environ["EMBEDDING_MODEL_NAME"]
-    else:
-        with pytest.raises(ValueError, match="not set in environment"):
-            embedding_factory.create()
+    monkeypatch.delenv("EMBEDDING_MODEL_NAME", raising=False)
+    with pytest.raises(ValueError, match="not set in environment"):
+        EmbeddingFactory(vendor_name="openai")
 
 
-def test_api_key_missing():
+def test_api_key_missing(monkeypatch):
     """
     Test case to ensure that an error is raised when the API key is missing.
     """
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     embedding_factory = EmbeddingFactory(vendor_name="openai", embedding_model_name="gpt-3")
-    if "OPENAI_API_KEY" in os.environ:
-        assert isinstance(embedding_factory.create(), OpenAIEmbeddings)
-    else:
-        with pytest.raises(ValueError, match="not set in environment"):
-            embedding_factory.create()
+    with pytest.raises(ValueError, match="not set in environment"):
+        embedding_factory.create()
+
+
+def test_api_key_present(monkeypatch):
+    """
+    Test case to ensure that the embedding is created successfully when the API
+    key is provided via the OPENAI_API_KEY environment variable (set explicitly
+    by this test, not by the CI environment).
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    embedding_factory = EmbeddingFactory(vendor_name="openai", embedding_model_name="gpt-3")
+    assert isinstance(embedding_factory.create(), OpenAIEmbeddings)
 
 
 def test_unknown_vendor_name():

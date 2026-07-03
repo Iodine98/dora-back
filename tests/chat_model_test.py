@@ -1,4 +1,3 @@
-import os
 import pytest
 from langchain.chat_models.openai import ChatOpenAI
 from chatdoc.chat_model import ChatModel
@@ -73,23 +72,33 @@ def test_load_chat_model_invalid_vendor():
         ChatModel(chat_model_vendor_name="mistral", chat_model_name="mistral-7B")
 
 
-def test_missing_openai_api_key():
+def test_missing_openai_api_key(monkeypatch):
     """
     Test case to ensure that a ValueError is raised when the OpenAI API key is not set.
     """
-    if "OPENAI_API_KEY" in os.environ:
-        assert isinstance(
-            ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3").chat_model,
-              ChatOpenAI) 
-    else:
-        with pytest.raises(ValueError):
-            ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(ValueError):
+        ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3")
+
+
+def test_present_openai_api_key(monkeypatch):
+    """
+    Test case to ensure that the chat model is created successfully when the API
+    key is provided via the OPENAI_API_KEY environment variable (set explicitly
+    by this test, not by the CI environment).
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    assert isinstance(
+        ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3").chat_model,
+        ChatOpenAI,
+    )
 
 
 
-def test_missing_huggingface_api_key():
+def test_missing_huggingface_api_key(monkeypatch):
     """
     Test case to ensure that a ValueError is raised when the HuggingFace API key is not set.
     """
+    monkeypatch.delenv("HUGGINGFACE_API_KEY", raising=False)
     with pytest.raises(ValueError):
         ChatModel(chat_model_vendor_name="huggingface", chat_model_name="BloombergGPT")

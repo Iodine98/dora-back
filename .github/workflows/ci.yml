@@ -1,0 +1,106 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.7"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install MariaDB Connector/C dev headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run tests
+        run: poetry run pytest tests/
+
+  docker-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Synthesize required config files
+        run: |
+          mkdir -p settings ./ci-models/chat ./ci-models/embedding
+
+          cat > .env <<'EOF'
+          FLASK_SECRET_KEY=ci-dummy-secret
+          EOF
+
+          cat > settings/.app.env <<'EOF'
+          CURRENT_ENV=TST
+          OPENAI_API_KEY=sk-ci-dummy-key
+          LOGGING_FILE_PATH=/app/logs/dora.log
+          EOF
+
+          cat > settings/.retrieval.env <<'EOF'
+          CHUNK_SIZE=512
+          TOP_K_DOCUMENTS=5
+          MINIMUM_ACCURACY=0.80
+          FETCH_K_DOCUMENTS=100
+          LAMBDA_MULT=0.2
+          STRATEGY=mmr
+          LAST_N_MESSAGES=5
+          EOF
+
+          cat > settings/.mariadb.env <<'EOF'
+          MARIADB_USER=ci_user
+          MARIADB_ROOT_PASSWORD=ci-dummy-root-password
+          MARIADB_PASSWORD=ci-dummy-password
+          MARIADB_INSTANCE_URL=mariadb+mariadbconnector://ci_user:ci-dummy-password@dora-mariadb
+          CHAT_HISTORY_CONNECTION_STRING=mariadb+mariadbconnector://ci_user:ci-dummy-password@dora-mariadb/chat_history
+          EOF
+
+          cat > settings/.model.env <<'EOF'
+          CHAT_MODEL_VENDOR_NAME=openai
+          CHAT_MODEL_NAME=gpt-3.5-turbo
+          EMBEDDING_MODEL_VENDOR_NAME=openai
+          EMBEDDING_MODEL_NAME=text-embedding-ada-002
+          EOF
+
+          echo "CHAT_MODEL_FOLDER_PATH=$(pwd)/ci-models/chat" >> "$GITHUB_ENV"
+          echo "EMBEDDING_MODEL_FOLDER_PATH=$(pwd)/ci-models/embedding" >> "$GITHUB_ENV"
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: dora-backend:latest
+
+      - name: Docker Compose Config
+        run: |
+          docker compose config -o docker-compose-filled.yml
+
+      - name: Run Docker Compose
+        uses: isbang/compose-action@v2
+        with:
+          compose-file: docker-compose-filled.yml
+          up-flags: "--detach"
+          down-flags: "--timeout 30"
+
+      - name: Check Running Containers
+        run: |
+          docker ps -a
