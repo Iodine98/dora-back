@@ -19,7 +19,7 @@ jobs:
           tags: dora-backend:latest
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dora-backend
           path: /tmp/dora-backend.tar
@@ -29,7 +29,7 @@ jobs:
     needs: build
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dora-backend
           path: /tmp
