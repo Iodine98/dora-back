@@ -1,4 +1,9 @@
-from langchain.document_loaders import PyPDFLoader, Docx2txtLoader
+from langchain.document_loaders import (
+    PyPDFLoader,
+    Docx2txtLoader,
+    UnstructuredExcelLoader,
+    UnstructuredXMLLoader,
+)
 from langchain.document_loaders.base import BaseLoader
 
 
@@ -11,6 +16,8 @@ class DocumentLoaderFactory:
         self.loader_map: dict[str, type[BaseLoader]] = {
             ".pdf": PyPDFLoader,
             ".docx": Docx2txtLoader,
+            ".xlsx": UnstructuredExcelLoader,
+            ".xml": UnstructuredXMLLoader,
             # Add other file types and their corresponding loaders here
         }
 
