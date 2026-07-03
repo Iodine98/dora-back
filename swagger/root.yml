@@ -1,0 +1,10 @@
+summary: Root endpoint
+description: Returns a generic welcome message for Gunicorn to load.
+responses:
+  '200':
+    description: Successful response with a welcome message
+    content:
+      text/html:
+        schema:
+          type: string
+          example: "<h1>Welcome to our server !!</h1>"

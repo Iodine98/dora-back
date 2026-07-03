@@ -4,13 +4,17 @@ import io
 import time
 import uuid
 import json
+import debugpy
+
+debugpy.listen(("0.0.0.0", 5678))
 from tqdm.auto import tqdm
 from typing import Any, cast
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
-from flask_cors import CORS
+
 from flask_executor import Executor
+from flasgger import Swagger, swag_from
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from werkzeug.datastructures import FileStorage
@@ -25,7 +29,7 @@ from server_modules.class_defs import (
     PromptResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
-    SessionQueryResponse,	
+    SessionQueryResponse,
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
@@ -35,6 +39,22 @@ set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 
 
 app = Flask(__name__)
+
+app.config["SWAGGER"] = {
+    "title": "DoRA-backend API",
+    "openapi": "3.0.2",
+    "uiversion": 3,
+}
+swagger = Swagger(
+    app,
+    template={
+        "info": {
+            "version": "0.0.1",
+            "title": "DoRA-backend API",
+            "description": "DoRA-backend API for the Document Retrieval and Analysis (DoRA) application.",
+        },
+    },
+)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
@@ -42,7 +62,6 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
-        CORS(app)
         app.logger.info(msg="Running in development mode")
     case "TST":
         app.logger.info(msg="Running in test mode")
@@ -79,7 +98,7 @@ def get_property(
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
-    elif (json_payload := request.json) is not None:
+    elif request.is_json and (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
             property_value = json.dumps(json_payload[property_name], ensure_ascii=False)
         elif isinstance(json_payload, list):
@@ -95,10 +114,40 @@ def get_property(
             f"No {property_name} found in request.form, session, or request.json"
         )
     if property_type == str:
-        return str(property_value).replace("\"", "")
+        return str(property_value).replace('"', "")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
+
+
+async def process_files(files: dict, session_id: str) -> WEMUploadResponse:
+    """
+    Processes the files and returns a response object.
+
+    Args:
+        files (dict): The files to process.
+        session_id (str): The session ID.
+
+    Returns:
+        dict: A response object containing the message and error.
+    """
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
+    time.sleep(1)
+    external_file_id_mapping = [
+        {"filename": original_names_dict[filename], "documentIds": document_ids}
+        for filename, document_ids in internal_file_id_mapping.items()
+    ]
+    response_message = WEMUploadResponse(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload en verwerkt!",
+        error="",
+        fileIdMapping=external_file_id_mapping,
+    )
+    return response_message
 
 
 @app.errorhandler(Exception)
@@ -114,33 +163,6 @@ def handle_value_error(error: Exception) -> Response:
     """
     response_message = ResponseMessage(message="", error=str(error))
     return make_response(response_message, 400)
-
-
-@app.after_request
-def add_cors_headers(response: Response) -> Response:
-    """
-    Adds CORS headers to the response object.
-
-    Args:
-        response (Response): The response object to add CORS headers to.
-
-    Returns:
-        Response: The response object with CORS headers added.
-    """
-    current_host_port = "127.0.0.1:5000"
-    origin = request.headers.get("Origin")
-    host = request.headers.get("Host")
-    if host != current_host_port:
-        if origin is not None:
-            response_message = ResponseMessage(
-                message="", error="No origin header found"
-            )
-            return make_response(response_message, 400)
-    if host == current_host_port:
-        origin = host
-    response.headers["Access-Control-Allow-Origin"] = str(origin)
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
 
 
 @app.route("/upload_files", methods=["OPTIONS"])
@@ -159,6 +181,7 @@ def set_post_options() -> Response:
 
 
 @app.route("/", methods=["GET"])
+@swag_from("swagger/root.yml")
 def root() -> Response:
     """
     Returns a generic welcome for Gunicorn to load
@@ -167,6 +190,7 @@ def root() -> Response:
 
 
 @app.route("/identify", methods=["POST"])
+@swag_from("swagger/identify.yml")
 def identify() -> Response:
     """
     Identifies the user and returns a response object.
@@ -198,37 +222,8 @@ def identify() -> Response:
     return response
 
 
-async def process_files(files: dict, session_id: str) -> WEMUploadResponse:
-    """
-    Processes the files and returns a response object.
-
-    Args:
-        files (dict): The files to process.
-        session_id (str): The session ID.
-
-    Returns:
-        dict: A response object containing the message and error.
-    """
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
-        files, session_id=session_id
-    )
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
-        full_document_dict, user_id=session_id
-    )
-    time.sleep(1)
-    external_file_id_mapping = [
-        {"filename": original_names_dict[filename], "documentIds": document_ids}
-        for filename, document_ids in internal_file_id_mapping.items()
-    ]
-    response_message = WEMUploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
-        error="",
-        fileIdMapping=external_file_id_mapping,
-    )
-    return response_message
-
-
 @app.route("/upload_files_json", methods=["POST"])
+@swag_from("swagger/upload_files_json.yml")
 def upload_files_json() -> Response:
     """
     Uploads files to the server.
@@ -275,15 +270,25 @@ def upload_files_json() -> Response:
     response = make_response(response_message, 200)
     return response
 
-@app.route("/get_file_id_mappings", methods=["GET"])
-def get_file_id_mappings() -> Response:
+
+@app.route("/get_file_id_mappings/<session_id>", methods=["GET"])
+@swag_from("swagger/file_id_mappings.yml")
+def get_file_id_mappings(session_id: str) -> Response:
     """
     Gets the file ID mappings.
     """
     response_message: WEMUploadResponse
-    process_files_state = executor.futures._state("process_files")
+    status_name = f"process_files_{session_id}"
+    process_files_state: None | str = executor.futures._state(status_name)
+    if process_files_state is None:
+        response_message = WEMUploadResponse(
+            message=f"No file ID mappings found for session {session_id}.",
+            error="",
+            fileIdMapping=[],
+        )
+        return make_response(response_message)
     app.logger.info("process_files_state: %s", process_files_state)
-    if not executor.futures.done("process_files"):
+    if not executor.futures.done(status_name):
         response_message = WEMUploadResponse(
             message=str(process_files_state),
             error="",
@@ -295,8 +300,8 @@ def get_file_id_mappings() -> Response:
     return make_response(response_message, 200)
 
 
-
 @app.route("/upload_files", methods=["POST"])
+# @swag_from("swagger/upload_files.yml")
 async def upload_files() -> Response:
     """
     Uploads files to the server.
@@ -323,16 +328,23 @@ async def upload_files() -> Response:
     prefix: str = get_prefix()
     files = get_files()
 
-    executor.submit_stored("process_files", process_files, files, session_id)
-    response_message = ResponseMessage(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
-        error="",
+    executor.submit_stored(
+        f"process_files_{session_id}", process_files, files, session_id
     )
-    response = make_response(response_message, 200)
-    return response
+    if not executor.futures.done(f"process_files_{session_id}"):
+        return make_response(
+            ResponseMessage(
+                message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!\nDeze worden nu verwerkt.",
+                error="",
+            ),
+            202,
+        )
+    future = executor.futures.pop(f"process_files_{session_id}")
+    return make_response(future.result(), 200)
 
 
 @app.route("/delete_file", methods=["DELETE", "POST"])
+@swag_from("swagger/file_del.yml")
 async def delete_file() -> Response:
     """
     Deletes a file from the server.
@@ -358,6 +370,7 @@ async def delete_file() -> Response:
 
 
 @app.route("/prompt", methods=["POST"])
+@swag_from("swagger/prompt.yml")
 def prompt() -> Response:
     """
     This function handles the prompt request from the client.
@@ -366,6 +379,18 @@ def prompt() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
+    if not executor.futures.done(f"process_files_{session_id}"):
+        status = str(executor.futures._state(f"process_files_{session_id}"))
+        return make_response(
+            ResponseMessage(
+                message="Files necessary for prompt are still processing, please try again in one minute.",
+                error=status,
+            ),
+            202,
+        )
+    else:
+        future = executor.futures.pop(f"process_files_{session_id}")
+        future.result()
     message = str(get_property("prompt"))
     chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
@@ -377,6 +402,7 @@ def prompt() -> Response:
 
 
 @app.route("/get_chat_history", methods=["GET"])
+@swag_from("swagger/chat_history.yml")
 def get_chat_history() -> Response:
     """
     Gets the chat history.
@@ -397,6 +423,7 @@ def get_chat_history() -> Response:
 
 
 @app.route("/clear_chat_history", methods=["DELETE"])
+@swag_from("swagger/clear_chat_history.yml")
 def clear_chat_history() -> Response:
     """
     Clears the chat history.
@@ -415,29 +442,8 @@ def clear_chat_history() -> Response:
     return make_response(response_message, 200)
 
 
-@app.route("/submit_final_answer", methods=["POST"])
-def submit_final_answer() -> Response:
-    """
-    This function handles the final answer submission from the client.
-
-    Returns:
-        tuple: A tuple containing the response message and the HTTP status code.
-    """
-    session_id = str(get_property("sessionId"))
-    original_answer = get_property("originalAnswer", property_type=dict)
-    edited_answer = get_property("editedAnswer", property_type=dict)
-    ExperimentSessionMethods.update_session(
-        session_id,
-        original_answer=original_answer,
-        edited_answer=edited_answer,
-        logger=app.logger,
-    )
-    response_message = ResponseMessage(
-        message="Final answer successfully submitted!", error=""
-    )
-    return make_response(response_message, 200)
-
 @app.route("/get_sessions", methods=["GET"])
+@swag_from("swagger/sessions.yml")
 def get_sessions() -> Response:
     """
     This function handles the get sessions request from the client.

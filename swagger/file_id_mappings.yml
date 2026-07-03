@@ -1,0 +1,64 @@
+summary: Get file ID mappings
+description: Retrieves the file ID mappings.
+responses:
+  '200':
+    description: Successfully retrieved file ID mappings.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Status message.
+            error:
+              type: string
+              description: Error message, if any.
+            fileIdMapping:
+              type: array
+              items:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                    description: The ID of the file.
+                  fileName:
+                    type: string
+                    description: The name of the file.
+  '202':
+    description: Request accepted but processing is not yet complete.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Status message.
+            error:
+              type: string
+              description: Error message, if any.
+            fileIdMapping:
+              type: array
+              items:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                    description: The ID of the file.
+                  fileName:
+                    type: string
+                    description: The name of the file.
+  '400':
+    description: Error message if there is a problem with the request.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.

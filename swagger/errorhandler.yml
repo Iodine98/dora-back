@@ -1,0 +1,17 @@
+summary: Handles an Exception
+description: Returns a response object containing the error message and status code.
+responses:
+  '400':
+    description: Bad Request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            error:
+              type: string
+          required:
+            - message
+            - error

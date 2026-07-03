@@ -2,7 +2,7 @@
 name = "dora-backend"
 version = "0.0.1"
 description = "The backend for Dora"
-authors = ["Rohan Sobha <r.r.sobha@student.tudelft.nl>"]
+authors = ["Rohan Sobha <rohanraysobha@gmail.com>"]
 license = "MIT License"
 readme = "README.md"
 
@@ -25,11 +25,13 @@ gunicorn = "20.1.0"
 mariadb = "^1.1.10"
 sqlalchemy = "^2.0.28"
 flask-executor = "^1.0.0"
+flasgger = "^0.9.7.1"
 
 
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
+debugpy = "^1.8.5"
 
 [build-system]
 requires = ["poetry-core"]

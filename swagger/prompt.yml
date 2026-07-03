@@ -1,0 +1,106 @@
+summary: Handle prompt request
+description: Handles the prompt request from the client.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          sessionId:
+            type: string
+            description: The session ID for the user.
+            example: "4ef2fdcf-5f53-40ea-80da-6dd39e8c5152"
+          prompt:
+            type: string
+            description: The prompt message to be sent to the chatbot.
+            example: "Summarize the article."
+        required:
+          - sessionId
+          - prompt
+responses:
+  '200':
+    description: Successfully processed the prompt.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message.
+              example: Prompt result is found under the result key.
+            error:
+              type: string
+              description: Error message, if any.
+            result:
+              type: object
+              description: The result of the prompt.
+              properties:
+                message:
+                  type: string
+                  description: Success message.
+                error:
+                  type: string
+                  description: Error message, if any.
+                result:
+                  type: object
+                  description: The result of the prompt.
+                  properties:
+                    answer:
+                      type: string
+                      description: The answer to the prompt.
+                    chat_history:
+                      type: array
+                      description: The chat history.
+                      items:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            description: Whether the message is from the user or the chatbot.
+                          data:
+                            type: object
+                            description: The message data.
+                            properties:
+                              content:
+                                type: string
+                                description: The message content.
+                              type:
+                                type: string
+                                description: Whether the message is from the user or the chatbot.
+                              additional_kwargs:
+                                type: object
+                                description: Additional keyword arguments.
+                                properties:
+                                  citations:
+                                    type: object
+                                    description: The citations for the message.
+                                    properties:
+                                      citations: 
+                                        type: array
+                                        description: The citations.
+                                        items:
+                                          type: string
+                                      with_proof:
+                                        type: boolean
+                                        description: Whether the citations are with proof.
+              # $ref: '#/components/schemas/PromptResponse'
+  '400':
+    description: Error message if there is a problem with the request.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Error message.
+            error:
+              type: string
+              description: Error details.
+components:
+  schemas:
+    PromptResponse:
+      type: object
+      

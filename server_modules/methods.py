@@ -75,7 +75,10 @@ class ServerMethods:
         self.app.logger.info(f"Created temporary directory for session {session_id}")
         original_name_dict: dict[str, str] = {}
         full_document_dict: dict[str, Path] = {}
-        for filename, file in tqdm(files.items(), desc="Saving files"):
+        for (
+            filename,
+            file,
+        ) in files.items():  # tqdm(files.items(), desc="Saving files"):
             unique_file_name = Utils.get_unique_filename(filename)
             original_name_dict[unique_file_name] = filename
             unique_file_path = dir_path / Path(unique_file_name)
@@ -165,7 +168,6 @@ class ExperimentSessionMethods:
             rows = [dict(row._asdict()) for row in result]
             formatted_rows = ExperimentSessionMethods.__parse_dates(rows)
             return formatted_rows
-
 
     @staticmethod
     def add_new_session(session_id: str, logger: logging.Logger) -> None:
