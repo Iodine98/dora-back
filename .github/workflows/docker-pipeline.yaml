@@ -19,7 +19,7 @@ jobs:
           tags: dora-backend:latest
           outputs: type=docker, dest=/tmp/dora-backend.tar
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dora-backend
           path: /tmp/dora-backend.tar
@@ -29,7 +29,7 @@ jobs:
     needs: build
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dora-backend
           path: /tmp
@@ -41,6 +41,48 @@ jobs:
         run: |
           docker load --input /tmp/dora-backend.tar
           docker image ls -a
+      - name: Set up dummy config for compose smoke test
+        run: |
+          mkdir -p settings ./ci-models/chat ./ci-models/embedding
+
+          cat <<EOF > .env
+          OPENAI_API_KEY=sk-dummy-ci-key
+          FILE_PATH=/tmp/dummy.pdf
+          EOF
+
+          cat <<EOF > settings/.app.env
+          CURRENT_ENV=TST
+          LOGGING_FILE_PATH=/app/logs/dora.log
+          EOF
+
+          cat <<EOF > settings/.retrieval.env
+          CHUNK_SIZE=512
+          TOP_K_DOCUMENTS=5
+          MINIMUM_ACCURACY=0.80
+          FETCH_K_DOCUMENTS=100
+          LAMBDA_MULT=0.2
+          STRATEGY=mmr
+          LAST_N_MESSAGES=5
+          CHAT_HISTORY_CONNECTION_STRING=sqlite:///dummy.db
+          EOF
+
+          cat <<EOF > settings/.mariadb.env
+          MARIADB_USER=dora_user
+          MARIADB_ROOT_PASSWORD=dummy_root_password
+          MARIADB_PASSWORD=dummy_password
+          MARIADB_INSTANCE_URL=mariadb+mariadbconnector://dora_user:dummy_password@dora-mariadb
+          EOF
+
+          cat <<EOF > settings/.model.env
+          CHAT_MODEL_VENDOR_NAME=openai
+          CHAT_MODEL_NAME=gpt-turbo-3.5
+          EMBEDDING_MODEL_VENDOR_NAME=openai
+          EMBEDDING_MODEL_NAME=text-embedding-ada-002
+          SENTENCE_TRANSFORMERS_HOME=/models/embedding_model
+          EOF
+
+          echo "CHAT_MODEL_FOLDER_PATH=$(pwd)/ci-models/chat" >> "$GITHUB_ENV"
+          echo "EMBEDDING_MODEL_FOLDER_PATH=$(pwd)/ci-models/embedding" >> "$GITHUB_ENV"
       - name: Docker Compose Config
         run: |
           docker compose config -o docker-compose-filled.yml
