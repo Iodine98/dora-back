@@ -1,5 +1,5 @@
-from itertools import chain
 from pathlib import Path
+from typing import Iterator
 from unittest.mock import MagicMock
 from langchain.schema.document import Document
 
@@ -7,20 +7,6 @@ import pytest
 
 from chatdoc.doc_loader.document_loader import DocumentLoader
 from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
-
-
-@pytest.fixture(name="mock_loader_factory")
-def fixture_mock_loader_factory():
-    """
-    Returns a mock loader factory object that creates a mock document loader.
-
-    Returns:
-        MagicMock: A mock loader factory object.
-    """
-    mock_loader_factory = MagicMock(spec=DocumentLoaderFactory)
-    mock_doc_loader = MagicMock(spec=BaseLoader)
-    mock_loader_factory.create.return_value = mock_doc_loader
-    return mock_loader_factory
 
 
 @pytest.fixture(name="mock_document")
@@ -35,59 +21,77 @@ def fixture_mock_document():
     return mock_document
 
 
+@pytest.fixture(name="mock_loader_factory")
+def fixture_mock_loader_factory(mock_document):
+    """
+    Returns a mock loader factory object that creates a mock document loader.
+
+    The mock document loader's `lazy_load` method returns a fresh iterator
+    over `mock_document` on every call, mirroring how `DocumentLoader.map_document_iterators`
+    calls `lazy_load()` once per registered file.
+
+    Args:
+        mock_document: The mock document to be yielded by each loader's iterator.
+
+    Returns:
+        MagicMock: A mock loader factory object.
+    """
+    mock_loader_factory = MagicMock(spec=DocumentLoaderFactory)
+    mock_doc_loader = MagicMock(spec=BaseLoader)
+    mock_doc_loader.lazy_load.side_effect = lambda: iter([mock_document])
+    mock_loader_factory.create.return_value = mock_doc_loader
+    return mock_loader_factory
+
+
+@pytest.fixture(name="document_dict")
+def fixture_document_dict():
+    """
+    Returns the dictionary of document names to paths used to build the DocumentLoader.
+
+    Returns:
+        dict[str, Path]: A dictionary containing document names as keys and file paths as values.
+    """
+    return {
+        "doc1": Path("/path/to/doc1.docx"),
+        "doc2": Path("/path/to/doc2.pdf"),
+    }
+
+
 @pytest.fixture(name="document_loader")
-def fixture_document_loader(mock_loader_factory):
+def fixture_document_loader(document_dict, mock_loader_factory):
     """
     Fixture function that creates a DocumentLoader instance with a dictionary of document paths.
 
     Args:
+        document_dict: A dictionary containing document names as keys and file paths as values.
         mock_loader_factory: A mock loader factory object.
 
     Returns:
         A DocumentLoader instance.
 
     """
-    document_dict = {
-        "doc1": Path("/path/to/doc1.docx"),
-        "doc2": Path("/path/to/doc2.pdf"),
-    }
     document_loader = DocumentLoader(document_dict, mock_loader_factory)
     return document_loader
 
 
-@pytest.fixture(name="mock_document_loader")
-def fixture_mock_document_loader(mock_document):
+def test_document_iterators_dict_keys(document_loader, document_dict):
     """
-    Creates a mock DocumentLoader object with a chain of document iterators
-    that returns the provided mock_document.
-
-    Args:
-        mock_document: The mock document to be returned by the document iterators.
-
-    Returns:
-        A MagicMock object representing the mock DocumentLoader.
+    Test that `document_iterators_dict` is a dict keyed by the same file names
+    that were passed into the DocumentLoader.
     """
-    mock_document_loader = MagicMock(spec=DocumentLoader)
-    mock_document_loader.chain_document_iterators.return_value = iter([mock_document])
-    return mock_document_loader
+    assert isinstance(document_loader.document_iterators_dict, dict)
+    assert set(document_loader.document_iterators_dict.keys()) == set(document_dict.keys())
 
 
-def test_document_loader_iterator(document_loader):
+def test_document_iterators_dict_values_are_document_iterators(document_loader, mock_document):
     """
-    Test case to verify the document_loader's document_iterator property.
-
-    Args:
-        document_loader: An instance of the document_loader class.
-
-    Raises:
-        AssertionError: If the document_loader's document_iterator is not an instance of itertools.chain.
+    Test that each value in `document_iterators_dict` is an iterator that yields
+    `Document` instances, matching how callers (e.g. `save_files_to_vector_db` in
+    `server_modules/methods.py`) consume `document_loader.document_iterators_dict[filename]`.
     """
-    assert isinstance(document_loader.document_iterator, chain), "Should return an instance of itertools.chain"
-
-
-def test_document_iterator_document(mock_document_loader):
-    """
-    Test that the document iterator returns an instance of Document.
-    """
-    document_iterator = mock_document_loader.chain_document_iterators()
-    assert isinstance(next(document_iterator), Document), "Should return an instance of Document"
+    for file_name in document_loader.document_iterators_dict:
+        document_iterator = document_loader.document_iterators_dict[file_name]
+        assert isinstance(document_iterator, Iterator)
+        document = next(document_iterator)
+        assert isinstance(document, Document), "Should yield an instance of Document"
+        assert document is mock_document
