@@ -4,7 +4,7 @@ from typing import Iterator
 from tqdm.auto import tqdm
 import os
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
+from langchain.text_splitter import NLTKTextSplitter, RecursiveCharacterTextSplitter, TextSplitter
 from langchain.schema import Document
 
 from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
@@ -78,6 +78,11 @@ class DocumentLoader:
         it will be used. Otherwise, if the chunk size is specified in the kwargs,
         it will be used. Otherwise, a default chunk size of 1000 will be used.
 
+        The environment variable "TEXT_SPLITTER_TYPE" controls which splitting
+        strategy is used: "character" (default) for the existing
+        RecursiveCharacterTextSplitter, or "sentence" for sentence-based
+        tokenization via NLTKTextSplitter.
+
         Args:
             **kwargs: Additional keyword arguments.
 
@@ -97,4 +102,8 @@ class DocumentLoader:
         else:
             self.logger.info(msg="No chunk overlap specified, defaulting to 0")
             chunk_overlap = 0
+        splitter_type = os.environ.get("TEXT_SPLITTER_TYPE", "character")
+        if splitter_type == "sentence":
+            self.logger.info(msg="Using sentence-based tokenization (NLTKTextSplitter)")
+            return NLTKTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

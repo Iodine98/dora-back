@@ -30,6 +30,7 @@ Make sure to set all the environment variables like:
 - `OPENAI_API_KEY`: an OpenAI API key to use an OpenAI model specified in `CHAT_MODEL_NAME`
 - `CURRENT_ENV`: the current environment for the Flask server; defaults to `DEV`
 - `CHUNK_SIZE`: the chunk size in which to partition the chunks from the text extracted from documents; defaults to `512` tokens.
+- `TEXT_SPLITTER_TYPE`: the text splitting strategy to use, either `character` (default, uses `RecursiveCharacterTextSplitter`) or `sentence` (uses `NLTKTextSplitter` for sentence-based tokenization, preferred for long documents). NLTK's `punkt` tokenizer data must be available (e.g. via `nltk.download('punkt')`) when using `sentence`.
 - `TOP_K_DOCUMENTS`: retrieve the top-k documents; defaults to the top-`5` documents.
 - `MINIMUM_ACCURACY`: the minimum accuracy for the retrieved documents (i.e. chunks of text); defaults to `0.80`
 - `FETCH_K_DOCUMENTS`: fetch `k`-number of documents (only applies if `STRATEGY=mmr`); defaults to `100`
