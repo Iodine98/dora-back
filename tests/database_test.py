@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import pytest
@@ -123,12 +122,11 @@ def test_experiment_session_lifecycle(env_connection_strings: None) -> None:
     """
     from server_modules.methods import ExperimentSessionMethods
 
-    logger = logging.getLogger("test")
     session_id = "session-123"
 
-    ExperimentSessionMethods.add_new_session(session_id, logger)
+    ExperimentSessionMethods.add_new_session(session_id)
 
-    sessions = ExperimentSessionMethods.retrieve_sessions(logger)
+    sessions = ExperimentSessionMethods.retrieve_sessions()
     assert len(sessions) == 1
     assert sessions[0]["session_id"] == session_id
     assert sessions[0]["number_of_messages"] == -1
@@ -148,10 +146,10 @@ def test_experiment_session_lifecycle(env_connection_strings: None) -> None:
         )
 
     ExperimentSessionMethods.update_session(
-        session_id, {"original": True}, {"edited": True}, logger
+        session_id, {"original": True}, {"edited": True}
     )
 
-    sessions = ExperimentSessionMethods.retrieve_sessions(logger)
+    sessions = ExperimentSessionMethods.retrieve_sessions()
     assert len(sessions) == 1
     assert sessions[0]["number_of_messages"] == 2
     assert sessions[0]["original_answer"] == {"original": True}
@@ -159,5 +157,5 @@ def test_experiment_session_lifecycle(env_connection_strings: None) -> None:
 
     with pytest.raises(ValueError):
         ExperimentSessionMethods.update_session(
-            "unknown-session", {}, {}, logger
+            "unknown-session", {}, {}
         )
