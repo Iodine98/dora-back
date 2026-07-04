@@ -24,7 +24,9 @@ Make sure to set all the environment variables like:
 - `CHAT_MODEL_NAME`: the name of the chat model (e.g. gpt-turbo-3.5)
 - `EMBEDDING_MODEL_VENDOR_NAME`: the name of the embeddings model vendor [openai, local, huggingface]
 - `EMBEDDING_MODEL_NAME`: the name of the embeddings model (e.g. text-embedding-ada-002)
-- `CURRENT_ENV`: the current environment [DEV, TST, PROD]. In `DEV` a CORS wrapper is applied to the Flask-server, but not in `TST` or `PROD`. In `PROD`, the server will connect to a defined remote endpoint for the Chroma Vector DB, but in `DEV` and `TST`, it will make use of a persistent client in Python.
+- `CURRENT_ENV`: the current environment [DEV, TST, PROD]. In `DEV` a CORS wrapper is applied to the Flask-server, but not in `TST` or `PROD`. In `PROD`, the server will connect to a Chroma Vector DB server over HTTP (see `CHROMA_SERVER_HOST` and `CHROMA_SERVER_PORT` below), but in `DEV` and `TST`, it will make use of a persistent client in Python.
+- `CHROMA_SERVER_HOST`: the hostname of the Chroma Vector DB server to connect to when `CURRENT_ENV=PROD`; defaults to `dora-chromadb` (the service name in `docker-compose.yml`).
+- `CHROMA_SERVER_PORT`: the port of the Chroma Vector DB server to connect to when `CURRENT_ENV=PROD`; defaults to `8000`.
 - `CHAT_MODEL_FOLDER_PATH`: the path to the folder of local chat models
 - `EMBEDDING_MODEL_FOLDER_PATH`: the path to the folder of local embedding models
 - `OPENAI_API_KEY`: an OpenAI API key to use an OpenAI model specified in `CHAT_MODEL_NAME`

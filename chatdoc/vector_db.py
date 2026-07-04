@@ -8,7 +8,7 @@ from langchain.schema import Document
 from langchain.vectorstores.chroma import Chroma
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
-from chromadb import PersistentClient
+from chromadb import HttpClient, PersistentClient
 from chromadb.api import ClientAPI
 
 
@@ -89,9 +89,17 @@ class VectorDatabase:
             case "DEV" | "TST":
                 self._chroma_db_client = PersistentClient()
             case "PROD":
-                # Connect to ChromaDB in the cloud
-                # Add code here to connect to ChromaDB in the cloud
-                raise NotImplementedError("ChromaDB in the cloud not implemented yet")
+                # Connect to the ChromaDB server (e.g. the `dora-chromadb`
+                # service in docker-compose.yml) over HTTP.
+                chroma_server_host = os.environ.get(
+                    "CHROMA_SERVER_HOST", "dora-chromadb"
+                )
+                chroma_server_port = int(
+                    os.environ.get("CHROMA_SERVER_PORT", "8000")
+                )
+                self._chroma_db_client = HttpClient(
+                    host=chroma_server_host, port=chroma_server_port
+                )
             case _:
                 raise ValueError("Invalid DORA environment")
         return self._chroma_db_client
