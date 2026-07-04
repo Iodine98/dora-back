@@ -1,4 +1,7 @@
 import json
+from typing import Optional
+import httpx
+import openai
 from langchain_community.chat_models.azureml_endpoint import AzureMLChatOnlineEndpoint
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.pydantic_v1 import SecretStr
@@ -6,6 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from pathlib import Path
 from .utils import Utils
 from .local_llm import build_llm
+from .http_client import HttpClientFactory
 
 
 class ChatModel:
@@ -34,7 +38,23 @@ class ChatModel:
             case "openai":
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("OPENAI_API_KEY")
-                return ChatOpenAI(api_key=self.api_key, model=self.chat_model_name)
+                # NOTE: ChatOpenAI forwards a single `http_client` kwarg to
+                # *both* the sync `openai.OpenAI` and the async
+                # `openai.AsyncOpenAI` client it builds internally, but each
+                # of those requires a differently-typed httpx client
+                # (`httpx.Client` vs. `httpx.AsyncClient`). To still allow
+                # injecting our shared, configurable HTTP client(s), we build
+                # the underlying OpenAI clients ourselves and hand ChatOpenAI
+                # their already-instantiated `client`/`async_client`
+                # attributes instead.
+                return ChatOpenAI(
+                    api_key=self.api_key,
+                    model=self.chat_model_name,
+                    client=openai.OpenAI(api_key=self.api_key, http_client=self.http_client).chat.completions,
+                    async_client=openai.AsyncOpenAI(
+                        api_key=self.api_key, http_client=self.http_async_client
+                    ).chat.completions,
+                )
             case "huggingface":
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("HUGGINGFACE_API_KEY")
@@ -65,10 +85,21 @@ class ChatModel:
         chat_model_vendor_name: str | None = None,
         chat_model_name: str | None = None,
         api_key: str | None = None,
+        http_client: Optional[httpx.Client] = None,
+        http_async_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """
         Initializes the ChatModel object by setting
         the chat model.
+
+        Args:
+            http_client (Optional[httpx.Client], optional): The (sync) HTTP
+                client used to talk to vendor APIs that support it (e.g.
+                OpenAI). Defaults to the shared client from
+                ``HttpClientFactory``.
+            http_async_client (Optional[httpx.AsyncClient], optional): The
+                async HTTP client counterpart of ``http_client``. Defaults to
+                the shared async client from ``HttpClientFactory``.
         """
         self.vendor_name: str = (
             chat_model_vendor_name
@@ -79,4 +110,10 @@ class ChatModel:
             chat_model_name if chat_model_name is not None else Utils.get_env_variable("CHAT_MODEL_NAME")
         )
         self.api_key = api_key
+        self.http_client: httpx.Client = (
+            http_client if http_client is not None else HttpClientFactory.get_shared_client()
+        )
+        self.http_async_client: httpx.AsyncClient = (
+            http_async_client if http_async_client is not None else HttpClientFactory.get_shared_async_client()
+        )
         self.chat_model: BaseChatModel = self._load_chat_model()

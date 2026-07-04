@@ -1,6 +1,8 @@
+import httpx
 import pytest
 from langchain.chat_models.openai import ChatOpenAI
 from chatdoc.chat_model import ChatModel
+from chatdoc.http_client import HttpClientFactory
 
 
 @pytest.fixture(name="openai_chat_model")
@@ -102,3 +104,39 @@ def test_missing_huggingface_api_key(monkeypatch):
     monkeypatch.delenv("HUGGINGFACE_API_KEY", raising=False)
     with pytest.raises(ValueError):
         ChatModel(chat_model_vendor_name="huggingface", chat_model_name="BloombergGPT")
+
+
+def test_default_http_client_is_shared_client(openai_chat_model):
+    """
+    Test case to ensure that, when no HTTP client is injected, the `ChatModel`
+    falls back to the process-wide shared client from `HttpClientFactory`.
+    """
+    assert openai_chat_model.http_client is HttpClientFactory.get_shared_client()
+    assert openai_chat_model.http_async_client is HttpClientFactory.get_shared_async_client()
+
+
+def test_injected_http_client_is_used():
+    """
+    Test case to ensure that an explicitly injected HTTP client is stored and
+    used (instead of the shared client) to build the underlying OpenAI
+    clients that back the `ChatOpenAI` instance.
+    """
+    custom_client = httpx.Client()
+    custom_async_client = httpx.AsyncClient()
+    try:
+        chat_model = ChatModel(
+            chat_model_vendor_name="openai",
+            chat_model_name="gpt-3",
+            api_key="test",
+            http_client=custom_client,
+            http_async_client=custom_async_client,
+        )
+        assert chat_model.http_client is custom_client
+        assert chat_model.http_async_client is custom_async_client
+        # `ChatOpenAI.client`/`.async_client` are the `.chat.completions`
+        # resource of the `openai.OpenAI`/`openai.AsyncOpenAI` instances we
+        # built with our injected HTTP clients.
+        assert chat_model.chat_model.client._client._client is custom_client
+        assert chat_model.chat_model.async_client._client._client is custom_async_client
+    finally:
+        custom_client.close()
