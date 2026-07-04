@@ -18,7 +18,7 @@ from chatdoc.vector_db import VectorDatabase
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.utils import Utils
 from server_modules.database import create_all_tables, session_scope
-from server_modules.models import FinalAnswerModel, ChatHistoryModel
+from server_modules.models import FinalAnswerModel, ChatHistoryModel, DocumentModel
 
 
 def create_tmp_dir(session_id: str) -> Path:
@@ -110,6 +110,12 @@ class ServerMethods:
             documents = document_loader.text_splitter.split_documents(document_iterator)
             document_ids = await vector_db.add_documents(documents)
             file_id_mapping[filename] = document_ids
+            DocumentMethods.add_document_ids(
+                session_id=user_id,
+                filename=filename,
+                document_ids=document_ids,
+                logger=self.app.logger,
+            )
         if delete_tmp_dir(user_id):
             self.app.logger.info(
                 f"Cleaned up temporary directory for session {user_id}"
@@ -137,6 +143,87 @@ class ServerMethods:
         vector_db = VectorDatabase(session_id, embedding_fn)
         deletion_successful = await vector_db.delete_documents(document_ids)
         return deletion_successful
+
+
+class DocumentMethods:
+    """
+    Method class for persisting and retrieving the document IDs that back an uploaded
+    file, scoped by session ID. This allows the delete-file endpoint to look up which
+    document IDs need to be removed from the vector database instead of requiring the
+    client to send them in the request payload.
+    """
+
+    @staticmethod
+    def add_document_ids(
+        session_id: str,
+        filename: str,
+        document_ids: list[str],
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Store the given document IDs for the given session_id/filename combination.
+        """
+        connection_string = Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        create_all_tables(DocumentModel, connection_string)
+        if not document_ids:
+            return
+        insertion_stmt = sqlalchemy.insert(DocumentModel).values(
+            [
+                {
+                    "session_id": session_id,
+                    "filename": filename,
+                    "document_id": document_id,
+                }
+                for document_id in document_ids
+            ]
+        )
+        with session_scope(connection_string) as session:
+            session.execute(insertion_stmt)
+        logger.info(
+            f"Stored {len(document_ids)} document id(s) for session {session_id}, "
+            f"file {filename}"
+        )
+
+    @staticmethod
+    def get_document_ids(
+        session_id: str, filename: str, logger: logging.Logger
+    ) -> list[str]:
+        """
+        Retrieve all document IDs stored for the given session_id/filename combination.
+        """
+        connection_string = Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        create_all_tables(DocumentModel, connection_string)
+        query = sqlalchemy.select(DocumentModel.document_id).where(
+            DocumentModel.session_id == session_id,
+            DocumentModel.filename == filename,
+        )
+        with session_scope(connection_string) as session:
+            document_ids = [row[0] for row in session.execute(query)]
+        logger.info(
+            f"Retrieved {len(document_ids)} document id(s) for session {session_id}, "
+            f"file {filename}"
+        )
+        return document_ids
+
+    @staticmethod
+    def delete_document_ids(
+        session_id: str, filename: str, logger: logging.Logger
+    ) -> None:
+        """
+        Remove the stored document IDs for the given session_id/filename combination,
+        e.g. after they have been deleted from the vector database.
+        """
+        connection_string = Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        create_all_tables(DocumentModel, connection_string)
+        delete_stmt = sqlalchemy.delete(DocumentModel).where(
+            DocumentModel.session_id == session_id,
+            DocumentModel.filename == filename,
+        )
+        with session_scope(connection_string) as session:
+            session.execute(delete_stmt)
+        logger.info(
+            f"Deleted stored document id(s) for session {session_id}, file {filename}"
+        )
 
 
 class ExperimentSessionMethods:

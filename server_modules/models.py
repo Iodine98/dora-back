@@ -33,6 +33,25 @@ class ChatHistoryModel(ChatHistoryBase):
     timestamp: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class DocumentModel(FinalAnswerBase):
+    """
+    Tracks the document IDs that were produced when a file was ingested into the
+    vector database, scoped to the session (user) that uploaded it. This allows the
+    delete endpoint to look up which document IDs belong to a given file/session
+    instead of requiring the client to supply them in the request payload.
+    """
+
+    __tablename__ = "document"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(36), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    document_id: Mapped[str] = mapped_column(String(255))
+
+    def __repr__(self) -> str:
+        return f"Document(session_id={self.session_id}, filename={self.filename}, document_id={self.document_id})"
+
+
 class FinalAnswerModel(FinalAnswerBase):
     __tablename__ = "final_answer"
 
