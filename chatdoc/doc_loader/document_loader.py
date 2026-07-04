@@ -1,5 +1,5 @@
 from pathlib import Path
-from logging import Logger
+import logging
 from typing import Iterator
 from tqdm.auto import tqdm
 import os
@@ -8,6 +8,8 @@ from langchain.text_splitter import NLTKTextSplitter, RecursiveCharacterTextSpli
 from langchain.schema import Document
 
 from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentLoader:
@@ -28,11 +30,8 @@ class DocumentLoader:
 
     """
 
-    def __init__(
-        self, document_dict: dict[str, Path], loader_factory: DocumentLoaderFactory, logger: Logger | None = None
-    ):
+    def __init__(self, document_dict: dict[str, Path], loader_factory: DocumentLoaderFactory):
         self.loader_factory = loader_factory
-        self.logger = logger if logger else Logger("DocumentLoader")
         self.loaders_dict: dict[str, BaseLoader] = self.initialize_loaders(document_dict)
         self.document_iterators_dict: dict[str, Iterator[Document]] = self.map_document_iterators()
         self.text_splitter: TextSplitter = self.load_token_text_splitter()
@@ -92,18 +91,18 @@ class DocumentLoader:
         """
         if "CHUNK_SIZE" in os.environ:
             chunk_size = int(os.environ["CHUNK_SIZE"])
-            self.logger.info(msg=f"Using chunk size of {chunk_size}")
+            logger.info(msg=f"Using chunk size of {chunk_size}")
         else:
-            self.logger.info(msg="No chunk size specified, defaulting to 1000")
+            logger.info(msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
         if "CHUNK_OVERLAP" in os.environ:
             chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
-            self.logger.info(msg=f"Using chunk overlap of {chunk_overlap} tokens")
+            logger.info(msg=f"Using chunk overlap of {chunk_overlap} tokens")
         else:
-            self.logger.info(msg="No chunk overlap specified, defaulting to 0")
+            logger.info(msg="No chunk overlap specified, defaulting to 0")
             chunk_overlap = 0
         splitter_type = os.environ.get("TEXT_SPLITTER_TYPE", "character")
         if splitter_type == "sentence":
-            self.logger.info(msg="Using sentence-based tokenization (NLTKTextSplitter)")
+            logger.info(msg="Using sentence-based tokenization (NLTKTextSplitter)")
             return NLTKTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

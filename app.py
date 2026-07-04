@@ -71,7 +71,7 @@ match current_env:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
 
 app.secret_key = str(uuid.uuid4())
-sm_app = ServerMethods(app)
+sm_app = ServerMethods()
 executor = Executor(app)
 
 Basic = str | int | float | bool
@@ -216,7 +216,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-    ExperimentSessionMethods.add_new_session(identity["sessionId"], app.logger)
+    ExperimentSessionMethods.add_new_session(identity["sessionId"])
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -451,7 +451,7 @@ def get_sessions() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    sessions = ExperimentSessionMethods.retrieve_sessions(app.logger)
+    sessions = ExperimentSessionMethods.retrieve_sessions()
     response_message = SessionQueryResponse(
         message="Sessions successfully retrieved!",
         error="",
