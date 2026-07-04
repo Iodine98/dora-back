@@ -20,7 +20,7 @@ from werkzeug.datastructures import FileStorage
 
 # local imports
 from server_modules import set_logging_config
-from server_modules.methods import ServerMethods, ExperimentSessionMethods
+from server_modules.methods import ServerMethods, ExperimentSessionMethods, DocumentMethods
 from server_modules.class_defs import (
     IdentifyResponse,
     Identity,
@@ -355,13 +355,32 @@ async def delete_file() -> Response:
     """
     session_id = str(get_property("sessionId"))
     file_name = str(get_property("filename"))
-    document_ids = get_property("documentIds", property_type=list)
+    # documentIds is now optional in the payload: if the client does not supply it,
+    # the document IDs are looked up from the DB using the sessionId/filename that
+    # were recorded when the file was uploaded (see issue #49).
+    try:
+        document_ids = get_property(
+            "documentIds", with_error=False, property_type=list
+        )
+    except (ValueError, json.JSONDecodeError):
+        document_ids = []
+    if not document_ids:
+        document_ids = DocumentMethods.get_document_ids(
+            session_id=session_id, filename=file_name, logger=app.logger
+        )
+    message, error = "", ""
+    if not document_ids:
+        error = f"Bestand: {file_name} \n\n niet gevonden!"
+        response_message = ResponseMessage(message=message, error=error)
+        return make_response(response_message, 400)
     deletion_successful = await sm_app.delete_docs_from_vector_db(
         document_ids, session_id=session_id
     )
-    message, error = "", ""
     if deletion_successful:
         message = f"Bestand: {file_name} \n\n succesvol verwijderd!"
+        DocumentMethods.delete_document_ids(
+            session_id=session_id, filename=file_name, logger=app.logger
+        )
     else:
         error = f"Bestand: {file_name} \n\n niet gevonden!"
     response_message = ResponseMessage(message=message, error=error)

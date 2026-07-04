@@ -17,11 +17,13 @@ requestBody:
             type: array
             items:
               type: string
-            description: The IDs of the documents to be deleted.
+            description: >-
+              Optional. The IDs of the documents to be deleted. If omitted, the
+              document IDs are looked up from the database using the sessionId
+              and filename that were recorded when the file was uploaded.
         required:
           - sessionId
           - filename
-          - documentIds
 responses:
   '200':
     description: Success message indicating the file was deleted.
