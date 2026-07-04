@@ -17,6 +17,7 @@ from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.utils import Utils
+from server_modules.database import create_all_tables, session_scope
 from server_modules.models import FinalAnswerModel, ChatHistoryModel
 
 
@@ -161,13 +162,12 @@ class ExperimentSessionMethods:
         """
         Get all the rows from the given table
         """
-        db_engine = sqlalchemy.create_engine(connection_string)
-        with db_engine.connect() as connection:
-            query = sqlalchemy.select(table_model)
-            result = connection.execute(query)
-            rows = [dict(row._asdict()) for row in result]
-            formatted_rows = ExperimentSessionMethods.__parse_dates(rows)
-            return formatted_rows
+        # Select the underlying Table (not the mapped class) so that rows come
+        # back as plain columns instead of ORM entity instances.
+        query = sqlalchemy.select(table_model.__table__)
+        with session_scope(connection_string) as session:
+            rows = [dict(row) for row in session.execute(query).mappings()]
+        return ExperimentSessionMethods.__parse_dates(rows)
 
     @staticmethod
     def add_new_session(session_id: str, logger: logging.Logger) -> None:
@@ -175,11 +175,9 @@ class ExperimentSessionMethods:
         Add a new record to the final_answer table when the user starts a new session
         """
         logger.info(f"Adding new record for session id: {session_id}")
-        db_engine = sqlalchemy.create_engine(
-            Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
-        )
-        FinalAnswerModel.metadata.create_all(
-            db_engine
+        connection_string = Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        create_all_tables(
+            FinalAnswerModel, connection_string
         )  # CREATE TABLE IF NOT EXISTS final_answer
         answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
             FinalAnswerModel.session_id == session_id
@@ -199,13 +197,12 @@ class ExperimentSessionMethods:
                 number_of_messages=-1,
             )
         )  # INSERT INTO final_answer (session_id, original_answer, edited_answer) VALUES (session_id, original_answer, edited_answer)
-        with db_engine.connect() as connection:
-            answer_model_record = connection.execute(answer_model_record_query)
+        with session_scope(connection_string) as session:
+            answer_model_record = session.execute(answer_model_record_query)
             if not answer_model_record.fetchone():
-                connection.execute(insertion_stmt)
+                session.execute(insertion_stmt)
             else:
-                connection.execute(update_stmt)
-            connection.commit()
+                session.execute(update_stmt)
 
     @staticmethod
     def update_session(
@@ -217,8 +214,8 @@ class ExperimentSessionMethods:
         """
         Update the final_answer table with the original and edited answers
         """
-        db_final_answer_engine = sqlalchemy.create_engine(
-            Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
+        final_answer_connection_string = Utils.get_env_variable(
+            "FINAL_ANSWER_CONNECTION_STRING"
         )
         logger.info(f"Updating final answer for session_id: {session_id}")
         answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
@@ -233,30 +230,30 @@ class ExperimentSessionMethods:
                 end_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
             )
         )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
-        with db_final_answer_engine.connect() as connection:
-            answer_model_record = connection.execute(answer_model_record_query)
+        with session_scope(final_answer_connection_string) as session:
+            answer_model_record = session.execute(answer_model_record_query)
             if not answer_model_record.fetchone():
                 raise ValueError(f"No record found for session_id: {session_id}")
-            connection.execute(update_stmt)
-            connection.commit()
-        db_chat_history_engine = sqlalchemy.create_engine(
-            Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+            session.execute(update_stmt)
+
+        chat_history_connection_string = Utils.get_env_variable(
+            "CHAT_HISTORY_CONNECTION_STRING"
         )
         count_stmt = sqlalchemy.select(
             sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
         ).where(ChatHistoryModel.session_id == session_id)
-        with db_chat_history_engine.connect() as connection:
-            number_of_messages = connection.execute(count_stmt).scalar()
+        with session_scope(chat_history_connection_string) as session:
+            number_of_messages = session.execute(count_stmt).scalar()
             if number_of_messages is None:
                 raise ValueError(f"No chat history found for session_id: {session_id}")
+
         update_message_count = (
             sqlalchemy.update(FinalAnswerModel)
             .where(FinalAnswerModel.session_id == session_id)
             .values(number_of_messages=number_of_messages)
         )
-        with db_final_answer_engine.connect() as connection:
-            connection.execute(update_message_count)
-            connection.commit()
+        with session_scope(final_answer_connection_string) as session:
+            session.execute(update_message_count)
 
     @staticmethod
     def retrieve_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
