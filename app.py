@@ -392,7 +392,7 @@ def prompt() -> Response:
         future = executor.futures.pop(f"process_files_{session_id}")
         future.result()
     message = str(get_property("prompt"))
-    chatbot = Chatbot(user_id=session_id)
+    chatbot = Chatbot(user_id=session_id, collection_name=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.",
         error="",
