@@ -28,6 +28,9 @@ sqlalchemy = "^2.0.28"
 flask-executor = "^1.0.0"
 flasgger = "^0.9.7.1"
 nltk = "^3.8.1"
+flask-socketio = "^5.3.6"
+gevent = "^24.2.1"
+gevent-websocket = "^0.10.1"
 
 
 

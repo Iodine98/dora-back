@@ -122,5 +122,15 @@ EXPOSE 8000
 # Enable debug port
 EXPOSE 5678
 
-# Execute Flask server on starting container
-CMD ["gunicorn", "-w", "2", "--threads", "4", "--preload", "-b", "0.0.0.0:8000", "--timeout", "600", "app:app"]
+# Execute Flask server on starting container.
+#
+# `app_ws:app` is the same Flask `app` object as `app:app`, with a
+# flask-socketio WebSocket layer attached on top (see app_ws.py). Real-time
+# WebSocket support under a WSGI stack like Flask requires a cooperative
+# worker class - `geventwebsocket.gunicorn.workers.GeventWebSocketWorker` -
+# rather than the default sync worker, so `--threads`/gthread is dropped, and
+# only a single worker (`-w 1`) is used since Flask-SocketIO needs clients
+# stuck to the same worker process (see app_ws.py for the full rationale,
+# including why this uses gevent instead of eventlet, and why it does NOT use
+# `uvicorn` - an ASGI server - as originally suggested in issue #62).
+CMD ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "-w", "1", "--preload", "-b", "0.0.0.0:8000", "--timeout", "600", "app_ws:app"]
