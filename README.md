@@ -52,6 +52,24 @@ mariadb+mariadbconnector://${MARIADB_USER}:${MARIADB_PASSWORD}@dora-mariadb
 ```
 Then run `poetry run flask --app server run`
 
+### WebSocket endpoint
+
+In addition to the HTTP endpoints served by `app.py`, `app_ws.py` exposes the
+same Flask application with a `flask-socketio` WebSocket layer attached.
+Connect a Socket.IO client to the server and emit a `prompt` event with a
+JSON payload of `{"sessionId": ..., "prompt": ...}`; the server responds with
+a `prompt_response` event carrying the same `message`/`error`/`result`
+payload shape as the HTTP `POST /prompt` endpoint. Both transports share the
+same underlying business logic (`resolve_prompt_response` in `app.py`), so
+they never diverge in behaviour.
+
+Locally, run it with `poetry run python app_ws.py` (uses `socketio.run`,
+suitable for development only). In the Docker image, gunicorn serves
+`app_ws:app` with the `gevent`-based WebSocket worker instead of `uvicorn`;
+see the comments in `app_ws.py` and the `Dockerfile` for why (uvicorn is an
+ASGI server, whereas Flask + flask-socketio is a WSGI stack whose real-time
+support depends on `eventlet`/`gevent`, not on ASGI).
+
 ## Run Flask server using Docker container
 
 Please configure the values in the Dockerfile before proceeding.

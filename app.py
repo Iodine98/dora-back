@@ -388,6 +388,46 @@ async def delete_file() -> Response:
     return response
 
 
+async def resolve_prompt_response(
+    session_id: str, message: str
+) -> tuple[ResponseMessage | PromptResponse, int]:
+    """
+    Core business logic backing the "submit a prompt" use case.
+
+    This is intentionally transport-agnostic: it is used both by the HTTP
+    ``/prompt`` endpoint below and by the WebSocket ``prompt`` event handler
+    in ``app_ws.py``, so that the two transports never diverge in behaviour.
+
+    Args:
+        session_id (str): The session ID the prompt belongs to.
+        message (str): The prompt text submitted by the user.
+
+    Returns:
+        tuple: A tuple of the response payload and the associated HTTP-style
+        status code (still meaningful for the WebSocket transport as part of
+        the emitted payload, even though no actual HTTP status line is sent).
+    """
+    if not executor.futures.done(f"process_files_{session_id}"):
+        status = str(executor.futures._state(f"process_files_{session_id}"))
+        return (
+            ResponseMessage(
+                message="Files necessary for prompt are still processing, please try again in one minute.",
+                error=status,
+            ),
+            202,
+        )
+    else:
+        future = executor.futures.pop(f"process_files_{session_id}")
+        future.result()
+    chatbot = Chatbot(user_id=session_id, collection_name=session_id)
+    prompt_response = PromptResponse(
+        message="Prompt result is found under the result key.",
+        error="",
+        result=await chatbot.send_prompt(message),
+    )
+    return prompt_response, 200
+
+
 @app.route("/prompt", methods=["POST"])
 @swag_from("swagger/prompt.yml")
 async def prompt() -> Response:
@@ -398,26 +438,9 @@ async def prompt() -> Response:
         tuple: A tuple containing the response message and the HTTP status code.
     """
     session_id = str(get_property("sessionId"))
-    if not executor.futures.done(f"process_files_{session_id}"):
-        status = str(executor.futures._state(f"process_files_{session_id}"))
-        return make_response(
-            ResponseMessage(
-                message="Files necessary for prompt are still processing, please try again in one minute.",
-                error=status,
-            ),
-            202,
-        )
-    else:
-        future = executor.futures.pop(f"process_files_{session_id}")
-        future.result()
     message = str(get_property("prompt"))
-    chatbot = Chatbot(user_id=session_id, collection_name=session_id)
-    prompt_response = PromptResponse(
-        message="Prompt result is found under the result key.",
-        error="",
-        result=await chatbot.send_prompt(message),
-    )
-    return make_response(prompt_response, 200)
+    response_message, status_code = await resolve_prompt_response(session_id, message)
+    return make_response(response_message, status_code)
 
 
 @app.route("/get_chat_history", methods=["GET"])
