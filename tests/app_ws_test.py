@@ -17,6 +17,7 @@ os.environ.setdefault(
 
 # pylint: disable=wrong-import-position
 import uuid
+from concurrent.futures import Future
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -40,8 +41,15 @@ def fixture_socketio_client(monkeypatch):
     """
     session_id = f"test-session-{uuid.uuid4()}"
 
-    already_done_future = app_module.executor.submit(lambda: None)
-    already_done_future.result()
+    # Build the completed future directly rather than via
+    # `app_module.executor.submit(...)`: the latter wraps the callable with
+    # `flask.copy_current_request_context`, which raises unless called from
+    # inside an active Flask request context - which this fixture is not
+    # (it runs before the socketio test client opens its own request
+    # context). A plain, already-resolved `concurrent.futures.Future` is all
+    # `FutureCollection`/`resolve_prompt_response` need.
+    already_done_future: Future = Future()
+    already_done_future.set_result(None)
     app_module.executor.futures.add(f"process_files_{session_id}", already_done_future)
 
     fake_chatbot = MagicMock()
