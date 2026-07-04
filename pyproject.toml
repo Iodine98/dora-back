@@ -21,7 +21,7 @@ pytest = "^7.4.3"
 pydantic = "^2.5.3"
 langchain-community = ">=0.0.9,<0.1.0"
 langchain-core = "^0.1.7"
-llama-cpp-python = "0.2.11"
+llama-cpp-python = {version = "0.2.11", source = "llama-cpp-python-cpu"}
 gunicorn = "20.1.0"
 mariadb = "^1.1.10"
 sqlalchemy = "^2.0.28"
@@ -37,6 +37,17 @@ gevent-websocket = "^0.10.1"
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
 debugpy = "^1.8.5"
+
+# Prebuilt CPU-only wheels for llama-cpp-python, published by the project
+# maintainer. PyPI only ships an sdist, so without this source poetry/pip
+# must compile the C++ inference library from scratch on every cold Docker
+# build (a multi-minute step). This source is only consulted for packages
+# that explicitly reference it by name (priority = "explicit"), so it has no
+# effect on dependency resolution for anything else.
+[[tool.poetry.source]]
+name = "llama-cpp-python-cpu"
+url = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]
