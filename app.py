@@ -16,7 +16,6 @@ from flask import Flask, request, session, make_response, Response
 from flask_executor import Executor
 from flasgger import Swagger, swag_from
 from langchain_core.messages.base import messages_to_dict
-from langchain_community.chat_message_histories import SQLChatMessageHistory
 from werkzeug.datastructures import FileStorage
 
 # local imports
@@ -32,6 +31,7 @@ from server_modules.class_defs import (
     SessionQueryResponse,
 )
 from chatdoc.chatbot import Chatbot
+from chatdoc.chat_history import SQLAlchemyChatMessageHistory
 from chatdoc.utils import Utils
 
 
@@ -411,7 +411,7 @@ def get_chat_history() -> Response:
         Response: A response object containing the chat history and status code.
     """
     session_id = str(get_property("sessionId"))
-    memory_db = SQLChatMessageHistory(
+    memory_db = SQLAlchemyChatMessageHistory(
         session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
     )
     response_message = ChatHistoryResponse(
@@ -432,7 +432,7 @@ def clear_chat_history() -> Response:
         Response: A response object containing the message and status code.
     """
     session_id = str(get_property("sessionId"))
-    memory_db = SQLChatMessageHistory(
+    memory_db = SQLAlchemyChatMessageHistory(
         session_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
     )
     memory_db.clear()

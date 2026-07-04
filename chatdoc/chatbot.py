@@ -4,12 +4,12 @@ from typing import Any
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
-from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_core.messages.base import messages_to_dict
 
 
 from .vector_db import VectorDatabase
 from .citation import Citations
+from .chat_history import SQLAlchemyChatMessageHistory
 from .embed.embedding_factory import EmbeddingFactory
 from .chat_model import ChatModel
 from .utils import Utils
@@ -27,7 +27,7 @@ class Chatbot:
         self.user_id = user_id
         self.embedding_fn = EmbeddingFactory().create()
         self.vector_db = VectorDatabase(self.user_id, self.embedding_fn)
-        self.memory_db = SQLChatMessageHistory(self.user_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
+        self.memory_db = SQLAlchemyChatMessageHistory(self.user_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = ChatModel().chat_model
         self.chatQA = ConversationalRetrievalChain.from_llm(  # pylint: disable=invalid-name

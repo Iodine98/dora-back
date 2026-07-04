@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, String
+from sqlalchemy import JSON, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -30,6 +30,7 @@ class ChatHistoryModel(ChatHistoryBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(String(36))
     message: Mapped[dict[str, Any]] = mapped_column(JSON)
+    timestamp: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class FinalAnswerModel(FinalAnswerBase):
