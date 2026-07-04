@@ -1,4 +1,6 @@
 import json
+from typing import Optional
+import httpx
 from langchain_community.chat_models.azureml_endpoint import AzureMLChatOnlineEndpoint
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.pydantic_v1 import SecretStr
@@ -6,6 +8,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from pathlib import Path
 from .utils import Utils
 from .local_llm import build_llm
+from .http_client import HttpClientFactory
 
 
 class ChatModel:
@@ -34,7 +37,11 @@ class ChatModel:
             case "openai":
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("OPENAI_API_KEY")
-                return ChatOpenAI(api_key=self.api_key, model=self.chat_model_name)
+                return ChatOpenAI(
+                    api_key=self.api_key,
+                    model=self.chat_model_name,
+                    http_client=self.http_client,
+                )
             case "huggingface":
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("HUGGINGFACE_API_KEY")
@@ -65,10 +72,16 @@ class ChatModel:
         chat_model_vendor_name: str | None = None,
         chat_model_name: str | None = None,
         api_key: str | None = None,
+        http_client: Optional[httpx.Client] = None,
     ) -> None:
         """
         Initializes the ChatModel object by setting
         the chat model.
+
+        Args:
+            http_client (Optional[httpx.Client], optional): The HTTP client
+                used to talk to vendor APIs that support it (e.g. OpenAI).
+                Defaults to the shared client from ``HttpClientFactory``.
         """
         self.vendor_name: str = (
             chat_model_vendor_name
@@ -79,4 +92,7 @@ class ChatModel:
             chat_model_name if chat_model_name is not None else Utils.get_env_variable("CHAT_MODEL_NAME")
         )
         self.api_key = api_key
+        self.http_client: httpx.Client = (
+            http_client if http_client is not None else HttpClientFactory.get_shared_client()
+        )
         self.chat_model: BaseChatModel = self._load_chat_model()

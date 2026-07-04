@@ -1,7 +1,9 @@
+import httpx
 import pytest
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 from chatdoc.embed.embedding_factory import EmbeddingFactory
+from chatdoc.http_client import HttpClientFactory
 
 
 def test_env_fn_called_missing_vendor_name(monkeypatch):
@@ -51,3 +53,36 @@ def test_unknown_vendor_name():
     """
     with pytest.raises(ValueError, match="No embedding available for vendor name"):
         EmbeddingFactory(vendor_name="unknown", embedding_model_name="gpt-3").create()
+
+
+def test_default_http_client_is_shared_client(monkeypatch):
+    """
+    Test case to ensure that, when no HTTP client is injected, the
+    `EmbeddingFactory` falls back to the process-wide shared client from
+    `HttpClientFactory`.
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    embedding_factory = EmbeddingFactory(vendor_name="openai", embedding_model_name="gpt-3")
+    assert embedding_factory.http_client is HttpClientFactory.get_shared_client()
+
+
+def test_injected_http_client_is_used(monkeypatch):
+    """
+    Test case to ensure that an explicitly injected HTTP client is stored and
+    forwarded to the underlying `OpenAIEmbeddings` instance, instead of the
+    shared client.
+    """
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    custom_client = httpx.Client()
+    try:
+        embedding_factory = EmbeddingFactory(
+            vendor_name="openai",
+            embedding_model_name="gpt-3",
+            http_client=custom_client,
+        )
+        assert embedding_factory.http_client is custom_client
+        embeddings = embedding_factory.create()
+        assert isinstance(embeddings, OpenAIEmbeddings)
+        assert embeddings.http_client is custom_client
+    finally:
+        custom_client.close()

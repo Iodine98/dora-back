@@ -1,9 +1,11 @@
-from typing import Any
+from typing import Any, Optional
+import httpx
 from langchain.schema.embeddings import Embeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceInferenceAPIEmbeddings
 from ..utils import Utils
+from ..http_client import HttpClientFactory
 
 
 class EmbeddingFactory:
@@ -20,13 +22,21 @@ class EmbeddingFactory:
 
     """
 
-    def __init__(self, vendor_name: str | None = None, embedding_model_name: str | None = None) -> None:
+    def __init__(
+        self,
+        vendor_name: str | None = None,
+        embedding_model_name: str | None = None,
+        http_client: Optional[httpx.Client] = None,
+    ) -> None:
         """
         Initializes an instance of the EmbeddingFactory class.
 
         Args:
             vendor_name (str | None, optional): The name of the vendor. Defaults to None.
             embedding_model_name (str | None, optional): The name of the embedding model. Defaults to None.
+            http_client (Optional[httpx.Client], optional): The HTTP client used to talk
+                to vendor APIs that support it (e.g. OpenAI). Defaults to the shared
+                client from ``HttpClientFactory``.
 
         """
         self.embedding_map: dict[str, type[Embeddings]] = {
@@ -41,6 +51,9 @@ class EmbeddingFactory:
         self.vendor_name = vendor_name if vendor_name is not None else Utils.get_env_variable("EMBEDDING_MODEL_VENDOR_NAME")
         self.embedding_model_name = (
             embedding_model_name if embedding_model_name is not None else Utils.get_env_variable("EMBEDDING_MODEL_NAME")
+        )
+        self.http_client: httpx.Client = (
+            http_client if http_client is not None else HttpClientFactory.get_shared_client()
         )
 
     def _create_api_key_dict(self, api_key: str | None) -> dict[str, Any]:
@@ -85,6 +98,19 @@ class EmbeddingFactory:
                 model_name_dict["model_name"] = self.embedding_model_name
         return model_name_dict
 
+    def _create_http_client_dict(self) -> dict[str, Any]:
+        """
+        Loads the shared HTTP client for vendors whose embedding class
+        supports injecting one (currently only OpenAI).
+
+        Returns:
+            dict[str, Any]: A kwargs dict containing the ``http_client``, or
+                an empty dict for vendors that don't support it.
+        """
+        if self.vendor_name == "openai":
+            return {"http_client": self.http_client}
+        return {}
+
     def create(self, api_key: str | None = None) -> Embeddings:
         """
         Creates an instance of the specified embedding class.
@@ -105,4 +131,5 @@ class EmbeddingFactory:
         api_key_dict = self._create_api_key_dict(api_key)
         settings_dict = self._create_settings_dict()
         model_name_dict = self._create_model_name_dict()
-        return embedding_class(**model_name_dict, **settings_dict, **api_key_dict)
+        http_client_dict = self._create_http_client_dict()
+        return embedding_class(**model_name_dict, **settings_dict, **api_key_dict, **http_client_dict)
