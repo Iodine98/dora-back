@@ -51,11 +51,16 @@ class Chatbot:
         self.chat_history = self.memory_db.messages
         self.last_n_messages = int(os_environ.get("LAST_N_MESSAGES", 5))
 
-    def send_prompt(self, prompt: str) -> dict[str, Any]:
+    async def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
         Method to send a prompt to the chatbot
+
+        Uses the chain's async `acall` so that the (slow) LLM completion and
+        retrieval calls don't block the Flask worker's event loop.
         """
-        result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages :]})
+        result = await self.chatQA.acall(
+            {"question": prompt, "chat_history": self.chat_history[-self.last_n_messages :]}
+        )
         citations = Citations(result["source_documents"])
         result["citations"] = citations.__dict__()
         for message in result["chat_history"]:
