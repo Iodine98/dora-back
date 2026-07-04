@@ -14,6 +14,7 @@ from .citation import Citations
 from .chat_history import SQLAlchemyChatMessageHistory
 from .embed.embedding_factory import EmbeddingFactory
 from .chat_model import ChatModel
+from .prompt_mode import PromptMode, get_system_template
 from .utils import Utils
 
 
@@ -24,15 +25,6 @@ CONTEXTUALIZE_QUESTION_SYSTEM_PROMPT = (
     "reformulate it if needed and otherwise return it as is."
 )
 
-QUESTION_ANSWERING_SYSTEM_PROMPT = (
-    "You are an assistant for question-answering tasks. Use the following "
-    "pieces of retrieved context to answer the question. If you don't know "
-    "the answer, say that you don't know."
-    "\n\n"
-    "{context}"
-)
-
-
 class Chatbot:
     """
     The chatbot class with a run method
@@ -42,6 +34,7 @@ class Chatbot:
         self,
         user_id: str,
         collection_name: str | None = None,
+        prompt_mode: PromptMode = PromptMode.DEFAULT,
     ):
         """
         Args:
@@ -55,6 +48,7 @@ class Chatbot:
         """
         self.user_id = user_id
         self.collection_name = collection_name if collection_name is not None else user_id
+        self.prompt_mode = prompt_mode
         self.embedding_fn = EmbeddingFactory().create()
         self.vector_db = VectorDatabase(self.collection_name, self.embedding_fn)
         self.memory_db = SQLAlchemyChatMessageHistory(self.user_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
@@ -84,7 +78,7 @@ class Chatbot:
 
         question_answering_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", QUESTION_ANSWERING_SYSTEM_PROMPT),
+                ("system", get_system_template(self.prompt_mode)),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ]

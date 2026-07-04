@@ -32,6 +32,7 @@ from server_modules.class_defs import (
 )
 from chatdoc.chatbot import Chatbot
 from chatdoc.chat_history import SQLAlchemyChatMessageHistory
+from chatdoc.prompt_mode import PromptMode
 from chatdoc.utils import Utils
 
 
@@ -389,7 +390,7 @@ async def delete_file() -> Response:
 
 
 async def resolve_prompt_response(
-    session_id: str, message: str
+    session_id: str, message: str, prompt_mode: PromptMode = PromptMode.DEFAULT
 ) -> tuple[ResponseMessage | PromptResponse, int]:
     """
     Core business logic backing the "submit a prompt" use case.
@@ -401,6 +402,8 @@ async def resolve_prompt_response(
     Args:
         session_id (str): The session ID the prompt belongs to.
         message (str): The prompt text submitted by the user.
+        prompt_mode (PromptMode): Which curated system prompt to build the
+            chain with. Defaults to `PromptMode.DEFAULT`.
 
     Returns:
         tuple: A tuple of the response payload and the associated HTTP-style
@@ -419,7 +422,7 @@ async def resolve_prompt_response(
     else:
         future = executor.futures.pop(f"process_files_{session_id}")
         future.result()
-    chatbot = Chatbot(user_id=session_id, collection_name=session_id)
+    chatbot = Chatbot(user_id=session_id, collection_name=session_id, prompt_mode=prompt_mode)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.",
         error="",
@@ -439,7 +442,12 @@ async def prompt() -> Response:
     """
     session_id = str(get_property("sessionId"))
     message = str(get_property("prompt"))
-    response_message, status_code = await resolve_prompt_response(session_id, message)
+    prompt_mode_raw = str(get_property("promptMode", with_error=False))
+    try:
+        prompt_mode = PromptMode(prompt_mode_raw) if prompt_mode_raw else PromptMode.DEFAULT
+    except ValueError:
+        prompt_mode = PromptMode.DEFAULT
+    response_message, status_code = await resolve_prompt_response(session_id, message, prompt_mode)
     return make_response(response_message, status_code)
 
 
