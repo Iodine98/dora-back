@@ -5,6 +5,7 @@ import pytest
 from langchain_core.documents import Document
 
 from chatdoc.chatbot import Chatbot
+from chatdoc.prompt_mode import PromptMode, get_system_template
 
 
 @pytest.fixture(name="mock_dependencies")
@@ -14,9 +15,9 @@ def fixture_mock_dependencies(monkeypatch):
     vector database, embedding function, chat model, SQL-backed chat history,
     and the LangChain chain-construction helpers used to build the
     history-aware retrieval chain) so tests can assert on how `user_id` and
-    `collection_name` are routed, and on how the chain is built/invoked,
-    without needing a real embedding model, vector store, chat model, or
-    database connection.
+    `collection_name` are routed, and on how the chain is built/invoked and
+    which prompt it uses, without needing a real embedding model, vector
+    store, chat model, or database connection.
 
     Returns:
         dict: The patched classes/objects, keyed by name, so tests can assert
@@ -198,3 +199,38 @@ def test_send_prompt_limits_chat_history_sent_to_chain(mock_dependencies):
 
     call_kwargs = mock_dependencies["mock_chain"].ainvoke.call_args.args[0]
     assert call_kwargs["chat_history"] == ["msg3", "msg4"]
+
+
+def test_default_prompt_mode_used_when_not_specified(mock_dependencies):
+    """
+    Existing callers that don't pass prompt_mode should keep getting the exact
+    system prompt DoRA used before prompt modes were introduced.
+    """
+    Chatbot(user_id="user-1")
+    mock_create_stuff_documents_chain = mock_dependencies["create_stuff_documents_chain"]
+    _, used_prompt = mock_create_stuff_documents_chain.call_args.args
+    assert used_prompt.messages[0].prompt.template == get_system_template(PromptMode.DEFAULT)
+
+
+@pytest.mark.parametrize("prompt_mode", list(PromptMode))
+def test_selected_prompt_mode_changes_system_message(prompt_mode, mock_dependencies):
+    """
+    Selecting a non-default prompt_mode must result in the chain being built with
+    that mode's curated system message, not the default one.
+    """
+    Chatbot(user_id="user-1", prompt_mode=prompt_mode)
+    mock_create_stuff_documents_chain = mock_dependencies["create_stuff_documents_chain"]
+    _, used_prompt = mock_create_stuff_documents_chain.call_args.args
+    assert used_prompt.messages[0].prompt.template == get_system_template(prompt_mode)
+
+
+def test_concise_and_detailed_modes_produce_different_system_messages(mock_dependencies):
+    mock_create_stuff_documents_chain = mock_dependencies["create_stuff_documents_chain"]
+
+    Chatbot(user_id="user-1", prompt_mode=PromptMode.CONCISE)
+    _, concise_prompt = mock_create_stuff_documents_chain.call_args.args
+
+    Chatbot(user_id="user-1", prompt_mode=PromptMode.DETAILED)
+    _, detailed_prompt = mock_create_stuff_documents_chain.call_args.args
+
+    assert concise_prompt.messages != detailed_prompt.messages

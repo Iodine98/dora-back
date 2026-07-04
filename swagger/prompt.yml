@@ -15,6 +15,17 @@ requestBody:
             type: string
             description: The prompt message to be sent to the chatbot.
             example: "Summarize the article."
+          promptMode:
+            type: string
+            description: >
+              Optional. Selects one of a curated set of system-message "modes" that
+              steer the tone/depth of the chatbot's answers. Falls back to "default"
+              if omitted or unrecognized.
+            enum:
+              - default
+              - concise
+              - detailed
+            example: "concise"
         required:
           - sessionId
           - prompt
