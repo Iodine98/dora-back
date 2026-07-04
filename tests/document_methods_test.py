@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import MagicMock
+from pathlib import Path
 
 import pytest
 
@@ -15,42 +15,17 @@ def logger_fixture() -> logging.Logger:
 
 
 @pytest.fixture(autouse=True)
-def env_fixture(monkeypatch):
+def env_fixture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """
-    Ensure the connection string environment variable used by DocumentMethods is set.
+    Point FINAL_ANSWER_CONNECTION_STRING at a fresh temp-file sqlite DB per test.
     """
-    monkeypatch.setenv(
-        "FINAL_ANSWER_CONNECTION_STRING", "sqlite+pysqlite:///:memory:"
-    )
+    db_path = tmp_path / "final_answer.db"
+    monkeypatch.setenv("FINAL_ANSWER_CONNECTION_STRING", f"sqlite:///{db_path}")
 
 
-@pytest.fixture(name="mock_connection")
-def mock_connection_fixture(monkeypatch):
+def test_add_document_ids_inserts_all_ids(logger: logging.Logger) -> None:
     """
-    Mock sqlalchemy.create_engine so no real DB connection is made, and capture the
-    executed statements/values via the mocked connection.
-    """
-    mock_connection = MagicMock()
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.__exit__.return_value = False
-    mock_connection.execute.return_value = []
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = mock_connection
-
-    mock_create_engine = MagicMock(return_value=mock_engine)
-    monkeypatch.setattr(
-        "server_modules.methods.sqlalchemy.create_engine", mock_create_engine
-    )
-    monkeypatch.setattr(
-        "server_modules.methods.DocumentModel.metadata.create_all", MagicMock()
-    )
-    return mock_connection
-
-
-def test_add_document_ids_inserts_all_ids(mock_connection, logger):
-    """
-    Storing document IDs should execute a single insert statement and commit.
+    Storing document IDs should persist all of them for the session/filename.
     """
     DocumentMethods.add_document_ids(
         session_id="session-1",
@@ -58,48 +33,51 @@ def test_add_document_ids_inserts_all_ids(mock_connection, logger):
         document_ids=["doc-1", "doc-2"],
         logger=logger,
     )
-    assert mock_connection.execute.call_count == 1
-    assert mock_connection.commit.call_count == 1
+    document_ids = DocumentMethods.get_document_ids(
+        session_id="session-1", filename="file.pdf", logger=logger
+    )
+    assert sorted(document_ids) == ["doc-1", "doc-2"]
 
 
-def test_add_document_ids_skips_empty_list(mock_connection, logger):
+def test_add_document_ids_skips_empty_list(logger: logging.Logger) -> None:
     """
-    Storing an empty list of document IDs should not execute any insert statement.
+    Storing an empty list of document IDs should not persist anything.
     """
     DocumentMethods.add_document_ids(
         session_id="session-1", filename="file.pdf", document_ids=[], logger=logger
     )
-    assert mock_connection.execute.call_count == 0
-
-
-def test_get_document_ids_returns_stored_ids(mock_connection, logger):
-    """
-    Retrieving document IDs should return the values yielded by the executed query.
-    """
-    mock_connection.execute.return_value = [("doc-1",), ("doc-2",)]
     document_ids = DocumentMethods.get_document_ids(
         session_id="session-1", filename="file.pdf", logger=logger
     )
-    assert document_ids == ["doc-1", "doc-2"]
+    assert document_ids == []
 
 
-def test_get_document_ids_returns_empty_list_when_none_found(mock_connection, logger):
+def test_get_document_ids_returns_empty_list_when_none_found(
+    logger: logging.Logger,
+) -> None:
     """
     Retrieving document IDs for an unknown session/filename should return an empty list.
     """
-    mock_connection.execute.return_value = []
     document_ids = DocumentMethods.get_document_ids(
         session_id="unknown-session", filename="file.pdf", logger=logger
     )
     assert document_ids == []
 
 
-def test_delete_document_ids_executes_delete_and_commits(mock_connection, logger):
+def test_delete_document_ids_removes_stored_ids(logger: logging.Logger) -> None:
     """
-    Deleting document IDs should execute a delete statement and commit.
+    Deleting document IDs should remove all stored ids for the session/filename.
     """
+    DocumentMethods.add_document_ids(
+        session_id="session-1",
+        filename="file.pdf",
+        document_ids=["doc-1", "doc-2"],
+        logger=logger,
+    )
     DocumentMethods.delete_document_ids(
         session_id="session-1", filename="file.pdf", logger=logger
     )
-    assert mock_connection.execute.call_count == 1
-    assert mock_connection.commit.call_count == 1
+    document_ids = DocumentMethods.get_document_ids(
+        session_id="session-1", filename="file.pdf", logger=logger
+    )
+    assert document_ids == []
