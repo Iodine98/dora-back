@@ -64,25 +64,33 @@ def test_default_http_client_is_shared_client(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     embedding_factory = EmbeddingFactory(vendor_name="openai", embedding_model_name="gpt-3")
     assert embedding_factory.http_client is HttpClientFactory.get_shared_client()
+    assert embedding_factory.http_async_client is HttpClientFactory.get_shared_async_client()
 
 
 def test_injected_http_client_is_used(monkeypatch):
     """
     Test case to ensure that an explicitly injected HTTP client is stored and
-    forwarded to the underlying `OpenAIEmbeddings` instance, instead of the
-    shared client.
+    used (instead of the shared client) to build the underlying OpenAI
+    clients that back the `OpenAIEmbeddings` instance.
     """
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     custom_client = httpx.Client()
+    custom_async_client = httpx.AsyncClient()
     try:
         embedding_factory = EmbeddingFactory(
             vendor_name="openai",
             embedding_model_name="gpt-3",
             http_client=custom_client,
+            http_async_client=custom_async_client,
         )
         assert embedding_factory.http_client is custom_client
+        assert embedding_factory.http_async_client is custom_async_client
         embeddings = embedding_factory.create()
         assert isinstance(embeddings, OpenAIEmbeddings)
-        assert embeddings.http_client is custom_client
+        # `OpenAIEmbeddings.client`/`.async_client` are the `.embeddings`
+        # resource of the `openai.OpenAI`/`openai.AsyncOpenAI` instances we
+        # built with our injected HTTP clients.
+        assert embeddings.client._client._client is custom_client
+        assert embeddings.async_client._client._client is custom_async_client
     finally:
         custom_client.close()

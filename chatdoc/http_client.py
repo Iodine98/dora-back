@@ -15,9 +15,11 @@ settings, custom CA bundles and timeouts in one place (see
 proxy with a custom CA bundle).
 
 ``HttpClientFactory`` centralizes that configuration and exposes a single
-process-wide client via :meth:`HttpClientFactory.get_shared_client`, while
-still allowing callers to inject their own client (e.g. in tests) via
-dependency injection.
+process-wide client via :meth:`HttpClientFactory.get_shared_client` (and
+its async counterpart, :meth:`HttpClientFactory.get_shared_async_client`,
+since vendor SDKs such as the OpenAI SDK maintain separate sync/async
+HTTP clients), while still allowing callers to inject their own client
+(e.g. in tests) via dependency injection.
 """
 
 import os
@@ -31,14 +33,17 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 class HttpClientFactory:
     """
     Factory responsible for creating and sharing a single, configurable
-    ``httpx.Client`` instance.
+    ``httpx.Client``/``httpx.AsyncClient`` instance.
 
     Attributes:
         _shared_client (Optional[httpx.Client]): Lazily-created, process-wide
             HTTP client instance.
+        _shared_async_client (Optional[httpx.AsyncClient]): Lazily-created,
+            process-wide async HTTP client instance.
     """
 
     _shared_client: Optional[httpx.Client] = None
+    _shared_async_client: Optional[httpx.AsyncClient] = None
 
     @staticmethod
     def _get_proxy() -> Optional[str]:
@@ -71,6 +76,17 @@ class HttpClientFactory:
         return True
 
     @classmethod
+    def _build_client_kwargs(cls, timeout: float) -> dict:
+        client_kwargs: dict = {
+            "timeout": timeout,
+            "verify": cls._get_verify(),
+        }
+        proxy = cls._get_proxy()
+        if proxy:
+            client_kwargs["proxy"] = proxy
+        return client_kwargs
+
+    @classmethod
     def create_client(cls, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> httpx.Client:
         """
         Creates a new, independently configured ``httpx.Client``.
@@ -82,14 +98,21 @@ class HttpClientFactory:
         Returns:
             httpx.Client: A newly created HTTP client.
         """
-        client_kwargs: dict = {
-            "timeout": timeout,
-            "verify": cls._get_verify(),
-        }
-        proxy = cls._get_proxy()
-        if proxy:
-            client_kwargs["proxy"] = proxy
-        return httpx.Client(**client_kwargs)
+        return httpx.Client(**cls._build_client_kwargs(timeout))
+
+    @classmethod
+    def create_async_client(cls, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> httpx.AsyncClient:
+        """
+        Creates a new, independently configured ``httpx.AsyncClient``.
+
+        Args:
+            timeout (float, optional): The request timeout in seconds.
+                Defaults to ``DEFAULT_TIMEOUT_SECONDS``.
+
+        Returns:
+            httpx.AsyncClient: A newly created async HTTP client.
+        """
+        return httpx.AsyncClient(**cls._build_client_kwargs(timeout))
 
     @classmethod
     def get_shared_client(cls) -> httpx.Client:
@@ -105,12 +128,31 @@ class HttpClientFactory:
         return cls._shared_client
 
     @classmethod
+    def get_shared_async_client(cls) -> httpx.AsyncClient:
+        """
+        Returns the process-wide shared ``httpx.AsyncClient``, creating it
+        lazily on first use.
+
+        Returns:
+            httpx.AsyncClient: The shared async HTTP client instance.
+        """
+        if cls._shared_async_client is None:
+            cls._shared_async_client = cls.create_async_client()
+        return cls._shared_async_client
+
+    @classmethod
     def reset_shared_client(cls) -> None:
         """
-        Closes (if open) and clears the shared client.
+        Closes (if open) and clears the shared sync and async clients.
 
         Mainly useful for tests that need a clean slate between runs.
         """
         if cls._shared_client is not None:
             cls._shared_client.close()
         cls._shared_client = None
+        if cls._shared_async_client is not None:
+            # Closing an async client requires an event loop; since we don't
+            # want to force one here, just drop the reference and let the
+            # garbage collector reclaim it. This mirrors the "best effort"
+            # cleanup approach used elsewhere for async resources.
+            cls._shared_async_client = None

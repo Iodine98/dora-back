@@ -1,5 +1,6 @@
 from typing import Any, Optional
 import httpx
+import openai
 from langchain.schema.embeddings import Embeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
@@ -27,6 +28,7 @@ class EmbeddingFactory:
         vendor_name: str | None = None,
         embedding_model_name: str | None = None,
         http_client: Optional[httpx.Client] = None,
+        http_async_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """
         Initializes an instance of the EmbeddingFactory class.
@@ -34,8 +36,11 @@ class EmbeddingFactory:
         Args:
             vendor_name (str | None, optional): The name of the vendor. Defaults to None.
             embedding_model_name (str | None, optional): The name of the embedding model. Defaults to None.
-            http_client (Optional[httpx.Client], optional): The HTTP client used to talk
-                to vendor APIs that support it (e.g. OpenAI). Defaults to the shared
+            http_client (Optional[httpx.Client], optional): The (sync) HTTP client used to
+                talk to vendor APIs that support it (e.g. OpenAI). Defaults to the shared
+                client from ``HttpClientFactory``.
+            http_async_client (Optional[httpx.AsyncClient], optional): The async HTTP
+                client counterpart of ``http_client``. Defaults to the shared async
                 client from ``HttpClientFactory``.
 
         """
@@ -54,6 +59,9 @@ class EmbeddingFactory:
         )
         self.http_client: httpx.Client = (
             http_client if http_client is not None else HttpClientFactory.get_shared_client()
+        )
+        self.http_async_client: httpx.AsyncClient = (
+            http_async_client if http_async_client is not None else HttpClientFactory.get_shared_async_client()
         )
 
     def _create_api_key_dict(self, api_key: str | None) -> dict[str, Any]:
@@ -98,18 +106,31 @@ class EmbeddingFactory:
                 model_name_dict["model_name"] = self.embedding_model_name
         return model_name_dict
 
-    def _create_http_client_dict(self) -> dict[str, Any]:
+    def _create_client_dict(self, api_key: str | None) -> dict[str, Any]:
         """
-        Loads the shared HTTP client for vendors whose embedding class
-        supports injecting one (currently only OpenAI).
+        Builds already-instantiated OpenAI sync/async clients (wrapping our
+        injected/shared HTTP client(s)) for vendors whose embedding class
+        supports it (currently only OpenAI).
+
+        NOTE: `OpenAIEmbeddings` forwards a single `http_client` kwarg to
+        *both* the sync `openai.OpenAI` and the async `openai.AsyncOpenAI`
+        client it builds internally, but each of those requires a
+        differently-typed httpx client (`httpx.Client` vs.
+        `httpx.AsyncClient`). To still allow injecting our shared,
+        configurable HTTP client(s), we build the underlying OpenAI clients
+        ourselves and hand `OpenAIEmbeddings` their already-instantiated
+        `client`/`async_client` attributes instead.
 
         Returns:
-            dict[str, Any]: A kwargs dict containing the ``http_client``, or
-                an empty dict for vendors that don't support it.
+            dict[str, Any]: A kwargs dict containing `client`/`async_client`,
+                or an empty dict for vendors that don't support it.
         """
-        if self.vendor_name == "openai":
-            return {"http_client": self.http_client}
-        return {}
+        if self.vendor_name != "openai":
+            return {}
+        return {
+            "client": openai.OpenAI(api_key=api_key, http_client=self.http_client).embeddings,
+            "async_client": openai.AsyncOpenAI(api_key=api_key, http_client=self.http_async_client).embeddings,
+        }
 
     def create(self, api_key: str | None = None) -> Embeddings:
         """
@@ -131,5 +152,5 @@ class EmbeddingFactory:
         api_key_dict = self._create_api_key_dict(api_key)
         settings_dict = self._create_settings_dict()
         model_name_dict = self._create_model_name_dict()
-        http_client_dict = self._create_http_client_dict()
-        return embedding_class(**model_name_dict, **settings_dict, **api_key_dict, **http_client_dict)
+        client_dict = self._create_client_dict(api_key_dict.get("api_key"))
+        return embedding_class(**model_name_dict, **settings_dict, **api_key_dict, **client_dict)
