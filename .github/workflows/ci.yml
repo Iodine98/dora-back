@@ -25,6 +25,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libmariadb-dev
 
+      # There's no committed poetry.lock (see .gitignore), so the cache key
+      # is hashed from pyproject.toml instead - it still gets invalidated
+      # whenever dependencies change, just at slightly coarser granularity
+      # than a lock-file hash would give. Caches Poetry's own cache dir
+      # (~/.cache/pypoetry), which holds both downloaded/built wheel
+      # artifacts and, since POETRY_VIRTUALENVS_IN_PROJECT isn't set here,
+      # the virtualenv itself - so a cache hit skips reinstalling entirely,
+      # not just re-downloading.
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-py3.11.7-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py3.11.7-
+
       - name: Install dependencies
         run: poetry install --no-root
 
