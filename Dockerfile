@@ -125,7 +125,11 @@ ENV VIRTUAL_ENV=/app/.venv \
 # apt-get RUNs concurrently; they use `sharing=locked` on the shared
 # /var/cache/apt mount so BuildKit serializes access instead of both
 # processes racing for apt's own internal lock file.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg \
+#
+# `curl` is included because `mariadb_repo_setup` itself checks for it as a
+# prerequisite - the full python image happens to have it preinstalled, but
+# python:3.11-slim (used for this stage) doesn't.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg curl \
     && wget https://r.mariadb.com/downloads/mariadb_repo_setup \
     && chmod +x mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version="mariadb-10.11.18" \
