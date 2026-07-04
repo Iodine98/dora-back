@@ -371,7 +371,7 @@ async def delete_file() -> Response:
 
 @app.route("/prompt", methods=["POST"])
 @swag_from("swagger/prompt.yml")
-def prompt() -> Response:
+async def prompt() -> Response:
     """
     This function handles the prompt request from the client.
 
@@ -396,7 +396,7 @@ def prompt() -> Response:
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.",
         error="",
-        result=chatbot.send_prompt(message),
+        result=await chatbot.send_prompt(message),
     )
     return make_response(prompt_response, 200)
 
