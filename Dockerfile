@@ -4,9 +4,6 @@ FROM python:3.11.7 AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy poetry.lock and pyproject.toml
-COPY pyproject.toml /app/
-
 # Set Poetry environment variables
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
@@ -24,7 +21,15 @@ ENV PATH="$PATH:$POETRY_HOME/bin"
 # `mariadb_repo_setup` script's output file name/format (one-line `.list` vs.
 # deb822 `.sources`) is an undocumented implementation detail that has changed
 # upstream, which makes cross-stage COPY of that file fragile.
-RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget gnupg \
+#
+# This runs before `COPY pyproject.toml` (further down) so that this layer -
+# which never changes on its own - stays cached across the frequent
+# dependency bumps in pyproject.toml, instead of being invalidated by them.
+# Since this no longer depends on anything from the runtime stage (and vice
+# versa), BuildKit can run both stages' apt-get RUNs concurrently; they use
+# `sharing=locked` on the shared /var/cache/apt mount so BuildKit serializes
+# access instead of both processes racing for apt's own internal lock file.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg \
     && wget https://r.mariadb.com/downloads/mariadb_repo_setup \
     && chmod +x mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version="mariadb-10.11.18" \
@@ -34,8 +39,12 @@ RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -
 # Install Poetry
 RUN pip install poetry
 
-# Install necessary dependencies
 RUN poetry config installer.max-workers 10
+
+# Copy poetry.lock and pyproject.toml
+COPY pyproject.toml /app/
+
+# Install necessary dependencies
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install -v --no-root
 
 #-----------------------------------------------------------------------------------
@@ -92,9 +101,6 @@ ENV SENTENCE_TRANSFORMERS_HOME=$EMBEDDING_MODEL_FOLDER_PATH
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
-# Copy the virtual environment from the builder
-COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
-
 # Install MariaDB Connector/C runtime library.
 # We run the full repo-setup + install here (rather than COPYing apt sources
 # state from another stage) because `mariadb_repo_setup`'s output file
@@ -104,14 +110,23 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 # changes. Only the shared library is needed at runtime (not the -dev
 # headers, which are only required when building the `mariadb` wheel in the
 # builder stage above).
-RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget gnupg \
+#
+# This runs before `COPY --from=builder`/`COPY . /app` (further down) so that
+# this layer - which never changes on its own - stays cached across builds,
+# instead of being invalidated every time the venv or source changes. Since
+# this no longer depends on the builder stage, BuildKit can run both stages'
+# apt-get RUNs concurrently; they use `sharing=locked` on the shared
+# /var/cache/apt mount so BuildKit serializes access instead of both
+# processes racing for apt's own internal lock file.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg \
     && wget https://r.mariadb.com/downloads/mariadb_repo_setup \
     && chmod +x mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version="mariadb-10.11.18" \
     && apt-get update && apt-get install -y libmariadb3 \
     && rm -f mariadb_repo_setup
 
-
+# Copy the virtual environment from the builder
+COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 # Copy current contents of folder to app directory
 COPY . /app
