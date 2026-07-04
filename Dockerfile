@@ -25,7 +25,11 @@ ENV PATH="$PATH:$POETRY_HOME/bin"
 # This runs before `COPY pyproject.toml` (further down) so that this layer -
 # which never changes on its own - stays cached across the frequent
 # dependency bumps in pyproject.toml, instead of being invalidated by them.
-RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget gnupg \
+# Since this no longer depends on anything from the runtime stage (and vice
+# versa), BuildKit can run both stages' apt-get RUNs concurrently; they use
+# `sharing=locked` on the shared /var/cache/apt mount so BuildKit serializes
+# access instead of both processes racing for apt's own internal lock file.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg \
     && wget https://r.mariadb.com/downloads/mariadb_repo_setup \
     && chmod +x mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version="mariadb-10.11.18" \
@@ -109,8 +113,12 @@ ENV VIRTUAL_ENV=/app/.venv \
 #
 # This runs before `COPY --from=builder`/`COPY . /app` (further down) so that
 # this layer - which never changes on its own - stays cached across builds,
-# instead of being invalidated every time the venv or source changes.
-RUN --mount=type=cache,target=/var/cache/apt apt-get update && apt-get install -y wget gnupg \
+# instead of being invalidated every time the venv or source changes. Since
+# this no longer depends on the builder stage, BuildKit can run both stages'
+# apt-get RUNs concurrently; they use `sharing=locked` on the shared
+# /var/cache/apt mount so BuildKit serializes access instead of both
+# processes racing for apt's own internal lock file.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked apt-get update && apt-get install -y wget gnupg \
     && wget https://r.mariadb.com/downloads/mariadb_repo_setup \
     && chmod +x mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version="mariadb-10.11.18" \
