@@ -31,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        LLAMA_CPP_BACKEND: ${LLAMA_CPP_BACKEND:-cpu}
     develop:
       watch:
         - action: rebuild

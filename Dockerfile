@@ -4,6 +4,22 @@ FROM python:3.11.7 AS builder
 # Set working directory
 WORKDIR /app
 
+# Selects which llama-cpp-python backend gets installed. Defaults to "cpu",
+# which uses the prebuilt CPU-only wheel pinned in pyproject.toml (source
+# "llama-cpp-python-cpu") - this avoids a multi-minute from-source compile on
+# every build, but means the image cannot use a GPU for local LLM inference.
+#
+# To build a GPU-capable image instead, override this at build time, e.g.:
+#   docker build --build-arg LLAMA_CPP_BACKEND=cuda .
+# Supported values: "cpu" (default), "cuda" (NVIDIA/CUBLAS), "metal" (Apple
+# Silicon). Anything other than "cpu" forces llama-cpp-python to be
+# recompiled from source with the matching backend enabled - see the RUN
+# step below and README.md for the full picture, including the additional
+# runtime-image/base-image and nvidia-container-toolkit requirements for
+# actually using a GPU in the running container.
+ARG LLAMA_CPP_BACKEND=cpu
+ENV LLAMA_CPP_BACKEND=$LLAMA_CPP_BACKEND
+
 # Set Poetry environment variables
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
@@ -47,10 +63,31 @@ COPY pyproject.toml /app/
 # Install necessary dependencies
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install -v --no-root
 
+# `poetry install` above always installs the prebuilt CPU wheel for
+# llama-cpp-python (it's pinned to that source in pyproject.toml). If a
+# non-cpu backend was requested via LLAMA_CPP_BACKEND, force a from-source
+# rebuild with the matching CMake flags enabled, replacing that CPU wheel.
+# Poetry's venv (POETRY_VIRTUALENVS_IN_PROJECT=true) isn't on PATH in this
+# stage, so its pip is invoked directly.
+RUN if [ "$LLAMA_CPP_BACKEND" = "cuda" ]; then \
+        CMAKE_ARGS="-DLLAMA_CUBLAS=on" /app/.venv/bin/pip install --force-reinstall --no-cache-dir --no-binary llama-cpp-python "llama-cpp-python==0.2.11"; \
+    elif [ "$LLAMA_CPP_BACKEND" = "metal" ]; then \
+        CMAKE_ARGS="-DLLAMA_METAL=on" /app/.venv/bin/pip install --force-reinstall --no-cache-dir --no-binary llama-cpp-python "llama-cpp-python==0.2.11"; \
+    elif [ "$LLAMA_CPP_BACKEND" != "cpu" ]; then \
+        echo "Unknown LLAMA_CPP_BACKEND '$LLAMA_CPP_BACKEND' (expected cpu, cuda, or metal)" >&2 && exit 1; \
+    fi
+
 #-----------------------------------------------------------------------------------
 
 ## Runtime Image
 FROM  python:3.11.7 AS runtime
+
+# Re-declared so the value used to build this image (see the builder stage
+# above) is visible/inspectable in the running container, e.g. via
+# `docker inspect` or `printenv`. This does not select the backend itself -
+# that already happened in the builder stage - it's informational only.
+ARG LLAMA_CPP_BACKEND=cpu
+ENV LLAMA_CPP_BACKEND=$LLAMA_CPP_BACKEND
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1

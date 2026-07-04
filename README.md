@@ -89,6 +89,22 @@ docker run --name <container_name> -p 5000:8000 dora-back \
 You can access the server at localhost:5000.
 Overriding the default values for the environment variables is optional.
 
+### GPU support for local models (`LLAMA_CPP_BACKEND`)
+
+By default, the Docker image installs `llama-cpp-python` from a prebuilt **CPU-only** wheel (see `[[tool.poetry.source]]` in `pyproject.toml`), instead of compiling it from source, since that used to be the single largest contributor to Docker build times. This means a default-built image cannot use a GPU for local LLM inference (`CHAT_MODEL_VENDOR_NAME=local`/`EMBEDDING_MODEL_VENDOR_NAME=local`).
+
+To build an image with GPU support instead, override the `LLAMA_CPP_BACKEND` build arg:
+```bash
+docker build --build-arg LLAMA_CPP_BACKEND=cuda -t dora-backend .
+# or, with docker compose:
+LLAMA_CPP_BACKEND=cuda docker compose build dora-backend
+```
+Supported values are `cpu` (default), `cuda` (NVIDIA/CUBLAS), and `metal` (Apple Silicon). Setting anything other than `cpu` forces `llama-cpp-python` to be recompiled from source with the corresponding CMake flags enabled (see the Dockerfile for details) - this is the same trade-off the pre-existing "Allow GPU-inference for local models" section above describes for the Poetry-based (non-Docker) setup, just wired up as a build arg here.
+
+Note that this only controls **which `llama-cpp-python` build gets installed**. Actually exercising a GPU from inside the container additionally requires:
+- Building `FROM` a CUDA-enabled base image (e.g. an `nvidia/cuda` image) instead of the plain `python:3.11.7` image used here, with a matching CUDA toolkit version - not currently wired up in this Dockerfile.
+- Running the container with GPU access, e.g. `docker run --gpus all ...` and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed on the host.
+
 ## Removing CORS and connecting to remote Vector DB
 To be able to remove the CORS wrapper and connect to a remote vector database, set the `CURRENT_ENV` variable to `PROD`.
 
