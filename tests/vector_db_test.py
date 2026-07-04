@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 
 import pytest
+from langchain_core.vectorstores import VectorStore
 
 from chatdoc.vector_db import VectorDatabase
 
@@ -25,6 +26,7 @@ def test_chroma_client_dev_uses_persistent_client(
     """
     monkeypatch.setenv("CURRENT_ENV", "DEV")
     mock_persistent_client.return_value = MagicMock()
+    mock_chroma.return_value = MagicMock(spec=VectorStore)
 
     vector_db = VectorDatabase(collection_name="test", embedding_fn=mock_embedding_fn)
 
@@ -46,6 +48,7 @@ def test_chroma_client_prod_uses_http_client(
     monkeypatch.setenv("CHROMA_SERVER_HOST", "some-chroma-host")
     monkeypatch.setenv("CHROMA_SERVER_PORT", "1234")
     mock_http_client.return_value = MagicMock()
+    mock_chroma.return_value = MagicMock(spec=VectorStore)
 
     vector_db = VectorDatabase(collection_name="test", embedding_fn=mock_embedding_fn)
 
@@ -67,6 +70,7 @@ def test_chroma_client_prod_uses_default_host_and_port(
     monkeypatch.delenv("CHROMA_SERVER_HOST", raising=False)
     monkeypatch.delenv("CHROMA_SERVER_PORT", raising=False)
     mock_http_client.return_value = MagicMock()
+    mock_chroma.return_value = MagicMock(spec=VectorStore)
 
     vector_db = VectorDatabase(collection_name="test", embedding_fn=mock_embedding_fn)
 
