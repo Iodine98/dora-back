@@ -1,4 +1,3 @@
-from logging import Logger
 from pathlib import Path
 from typing import Iterator
 from unittest.mock import MagicMock
@@ -104,9 +103,7 @@ def _bare_document_loader() -> DocumentLoader:
     Builds a DocumentLoader instance without running __init__, so that
     load_token_text_splitter can be tested in isolation.
     """
-    instance = object.__new__(DocumentLoader)
-    instance.logger = Logger("test_document_loader")
-    return instance
+    return object.__new__(DocumentLoader)
 
 
 def test_load_token_text_splitter_defaults_to_character(monkeypatch):

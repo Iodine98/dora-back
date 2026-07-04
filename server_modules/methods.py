@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Any
 from tqdm.auto import tqdm
 
-from flask import Flask
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.datastructures import FileStorage
@@ -19,6 +18,8 @@ from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.utils import Utils
 from server_modules.database import create_all_tables, session_scope
 from server_modules.models import FinalAnswerModel, ChatHistoryModel, DocumentModel
+
+logger = logging.getLogger(__name__)
 
 
 def create_tmp_dir(session_id: str) -> Path:
@@ -53,9 +54,6 @@ class ServerMethods:
     Class representing server methods for file processing and document handling.
     """
 
-    def __init__(self, app: Flask):
-        self.app = app
-
     FileToPathMapping = dict[str, Path]
     OriginalFileMapping = dict[str, str]
 
@@ -73,7 +71,7 @@ class ServerMethods:
             A tuple containing the original file names and the full file paths.
         """
         dir_path = create_tmp_dir(session_id=session_id)
-        self.app.logger.info(f"Created temporary directory for session {session_id}")
+        logger.info(f"Created temporary directory for session {session_id}")
         original_name_dict: dict[str, str] = {}
         full_document_dict: dict[str, Path] = {}
         for (
@@ -103,7 +101,7 @@ class ServerMethods:
         embedding_fn = EmbeddingFactory().create()
         vector_db = VectorDatabase(user_id, embedding_fn)
         loader_factory = DocumentLoaderFactory()
-        document_loader = DocumentLoader(file_dict, loader_factory, self.app.logger)
+        document_loader = DocumentLoader(file_dict, loader_factory)
         file_id_mapping = {}
         for filename in tqdm(file_dict.keys(), desc="Processing files"):
             document_iterator = document_loader.document_iterators_dict[filename]
@@ -117,11 +115,11 @@ class ServerMethods:
                 logger=self.app.logger,
             )
         if delete_tmp_dir(user_id):
-            self.app.logger.info(
+            logger.info(
                 f"Cleaned up temporary directory for session {user_id}"
             )
         else:
-            self.app.logger.error(
+            logger.error(
                 f"Failed to clean up temporary directory for session {user_id}"
             )
         return file_id_mapping
@@ -257,7 +255,7 @@ class ExperimentSessionMethods:
         return ExperimentSessionMethods.__parse_dates(rows)
 
     @staticmethod
-    def add_new_session(session_id: str, logger: logging.Logger) -> None:
+    def add_new_session(session_id: str) -> None:
         """
         Add a new record to the final_answer table when the user starts a new session
         """
@@ -296,7 +294,6 @@ class ExperimentSessionMethods:
         session_id: str,
         original_answer: dict,
         edited_answer: dict,
-        logger: logging.Logger,
     ) -> None:
         """
         Update the final_answer table with the original and edited answers
@@ -343,7 +340,7 @@ class ExperimentSessionMethods:
             session.execute(update_message_count)
 
     @staticmethod
-    def retrieve_sessions(logger: logging.Logger) -> list[dict[str, Any]]:
+    def retrieve_sessions() -> list[dict[str, Any]]:
         """
         Get all the sessions from the final_answer table
         """
@@ -355,7 +352,7 @@ class ExperimentSessionMethods:
         return sessions
 
     @staticmethod
-    def retrieve_chat_history(logger: logging.Logger) -> list[dict[str, Any]]:
+    def retrieve_chat_history() -> list[dict[str, Any]]:
         """
         Get all the chat history from the chat_history table
         """
