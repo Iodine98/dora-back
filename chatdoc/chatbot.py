@@ -23,10 +23,22 @@ class Chatbot:
     def __init__(
         self,
         user_id: str,
+        collection_name: str | None = None,
     ):
+        """
+        Args:
+            user_id (str): Identifies the chat history for this user/session. Used
+                exclusively to key the `SQLChatMessageHistory` conversation memory.
+            collection_name (str | None): Identifies the vector store collection
+                where the documents for this chat are stored. Used exclusively to
+                select the `VectorDatabase` collection. Defaults to `user_id` when
+                not provided, so a single caller-supplied identifier can still be
+                used for both without breaking existing behavior.
+        """
         self.user_id = user_id
+        self.collection_name = collection_name if collection_name is not None else user_id
         self.embedding_fn = EmbeddingFactory().create()
-        self.vector_db = VectorDatabase(self.user_id, self.embedding_fn)
+        self.vector_db = VectorDatabase(self.collection_name, self.embedding_fn)
         self.memory_db = SQLAlchemyChatMessageHistory(self.user_id, Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING"))
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = ChatModel().chat_model
