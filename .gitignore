@@ -170,3 +170,6 @@ azure_chat_models.json
 *kubernetes.yaml
 *kubernetes.yml
 *.crt
+
+# Claude Code local agent state
+.claude/
